@@ -7,6 +7,7 @@ import DarkModeToggle from '../components/DarkModeToggle'
 import GoogleAuthButton from '../components/GoogleAuthButton'
 import { useAuthAnalytics } from '../hooks/useAnalytics'
 import WelcomeMessage from '../components/WelcomeMessage'
+import { showToast } from '../utils/toast'
 
 export default function Login() {
   const { trackLogin } = useAuthAnalytics()
@@ -48,6 +49,21 @@ export default function Login() {
 
     return () => subscription.unsubscribe()
   }, [navigate])
+
+  useEffect(() => {
+    showToast({
+      message: '👋 Welcome back!',
+      duration: 7000,
+      position: 'top',
+      style: {
+        backgroundColor: '#4CAF50',
+        color: '#fff',
+        fontSize: '16px',
+        padding: '12px',
+        borderRadius: '10px'
+      }
+    });
+  }, []);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()

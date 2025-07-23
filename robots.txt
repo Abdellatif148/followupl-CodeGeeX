@@ -1,0 +1,4 @@
+User-agent: *
+Disallow:
+
+Sitemap: https://followuply.vercel.app/sitemap.xml

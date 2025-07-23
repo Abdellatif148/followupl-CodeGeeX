@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles */
+.bg-primary {
+  background-color: #0055ff; /* Ensure sufficient contrast */
+}
+.text-primary {
+  color: #ffffff; /* Ensure sufficient contrast */
+}

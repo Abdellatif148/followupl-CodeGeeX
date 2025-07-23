@@ -99,7 +99,7 @@ export default function Login() {
       <Helmet>
         <title>Sign In - FollowUply | AI Client Tracker for Freelancers</title>
         <meta name="description" content="Sign in to your FollowUply account to manage clients, track invoices, and never miss a follow-up again." />
-        <link rel="canonical" href="https://followuply.vercel.app/login" />
+        <link rel="canonical" href="https://fcodegeex.vercel.app/login" />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       {/* Navigation */}

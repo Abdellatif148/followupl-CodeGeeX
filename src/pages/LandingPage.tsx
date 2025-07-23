@@ -15,8 +15,8 @@ export default function LandingPage() {
       <Helmet>
         <title>FollowUply - AI Client Tracker for Freelancers | Get Paid On Time</title>
         <meta name="description" content="AI-powered client tracker that helps freelancers get paid on time with smart reminders, invoice tracking, and client management. Perfect for Fiverr, Upwork, and solo developers." />
-        <link rel="canonical" href="https://followuply.vercel.app/" />
-        <meta property="og:url" content="https://followuply.vercel.app/" />
+        <link rel="canonical" href="https://fcodegeex.vercel.app/" />
+        <meta property="og:url" content="https://fcodegeex.vercel.app/" />
         <meta property="og:type" content="website" />
       </Helmet>
       <Navigation />

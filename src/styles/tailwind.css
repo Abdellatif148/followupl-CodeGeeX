@@ -21,3 +21,17 @@
   transform: translateX(-50%);
   z-index: 1000; /* Ensure it appears above other elements */
 }
+.ai-button {
+  background-color: #0055ff; /* Primary blue */
+  color: #ffffff; /* White text */
+  border: none;
+  border-radius: 5px; /* Rounded corners */
+  padding: 8px 16px; /* Button padding */
+  font-size: 0.875rem; /* Small font size */
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.ai-button:hover {
+  background-color: #003f99; /* Darker blue on hover */
+}

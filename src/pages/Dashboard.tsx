@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
   const { formatCurrency } = useCurrency()
+  const [showWelcome, setShowWelcome] = useState(true)
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -48,6 +49,12 @@ export default function Dashboard() {
 
     loadDashboard()
   }, [])
+
+  useEffect(() => {
+    setShowWelcome(true)
+    const timer = setTimeout(() => setShowWelcome(false), 7000)
+    return () => clearTimeout(timer)
+  }, [user])
 
   if (loading) {
     return (
@@ -79,6 +86,11 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="p-6 space-y-6">
+        {showWelcome && (
+          <div className="bg-green-600 text-white rounded-lg px-6 py-3 text-md font-medium shadow-md flex items-center justify-between transition-opacity duration-500">
+            {t('dashboard.welcome', { name: userName })}
+          </div>
+        )}
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>

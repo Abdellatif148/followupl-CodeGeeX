@@ -9,3 +9,15 @@
 .text-primary {
   color: #ffffff; /* Ensure sufficient contrast */
 }
+.welcome-message {
+  background-color: #28a745; /* Green background */
+  color: #ffffff; /* White text */
+  border-radius: 8px; /* Rounded corners */
+  font-size: 1rem; /* Medium font size */
+  padding: 10px 20px; /* Padding for spacing */
+  position: fixed; /* Fixed position at the top */
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000; /* Ensure it appears above other elements */
+}

@@ -6,6 +6,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import DarkModeToggle from '../components/DarkModeToggle'
 import GoogleAuthButton from '../components/GoogleAuthButton'
 import { useAuthAnalytics } from '../hooks/useAnalytics'
+import WelcomeMessage from '../components/WelcomeMessage'
 
 export default function Login() {
   const { trackLogin } = useAuthAnalytics()

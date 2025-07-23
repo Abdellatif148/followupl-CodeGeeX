@@ -30,6 +30,7 @@
   font-size: 0.875rem; /* Small font size */
   cursor: pointer;
   transition: background-color 0.3s ease;
+  margin-left: 10px; /* Spacing from other elements */
 }
 
 .ai-button:hover {

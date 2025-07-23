@@ -8,9 +8,12 @@ const TopBar = () => {
   return (
     <div className="top-bar">
       {/* ...existing code... */}
-      <button className="ai-button" onClick={handleAITalk}>
-        Talk with AI
-      </button>
+      <div className="top-bar-actions">
+        {/* ...existing code... */}
+        <button className="ai-button" onClick={handleAITalk}>
+          Talk with AI
+        </button>
+      </div>
     </div>
   );
 };

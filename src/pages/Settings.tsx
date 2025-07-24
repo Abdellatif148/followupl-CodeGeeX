@@ -24,7 +24,10 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState('profile')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
-  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [avatarError, setAvatarError] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '')
+  const fileInputRef = React.useRef()
   const [notification, setNotification] = useState<{
     type: 'success' | 'error'
     message: string
@@ -49,6 +52,10 @@ export default function Settings() {
   useEffect(() => {
     loadUserData()
   }, [])
+
+  useEffect(() => {
+    setAvatarUrl(profile?.avatar_url || '')
+  }, [profile])
 
   const loadUserData = async () => {
     try {
@@ -88,47 +95,41 @@ export default function Settings() {
     setTimeout(() => setNotification(null), 5000)
   }
 
-  const handleProfilePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+  // Helper to get public URL from Supabase Storage
+  const getPublicUrl = (path: string) => {
+    const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+    return data?.publicUrl
+  }
+
+  // Handle file upload
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAvatarError('')
+    const file = e.target.files?.[0]
     if (!file || !user) return
-
-    setUploadingPhoto(true)
+    setAvatarUploading(true)
     try {
-      // Upload file to Supabase Storage
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${user.id}.${fileExt}`
-      
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const timestamp = Date.now()
+      const filePath = `${user.id}/${timestamp}_${file.name}`
+      // Upload to Supabase Storage
+      const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file, { upsert: true })
-
+        .upload(filePath, file, { upsert: true })
       if (uploadError) throw uploadError
-
       // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName)
-
-      // Update profile with new avatar URL
-      if (profile) {
-        await profilesApi.update(user.id, { avatar_url: publicUrl })
-      } else {
-        await profilesApi.create({
-          id: user.id,
-          avatar_url: publicUrl,
-          full_name: formData.full_name || user.user_metadata?.full_name || ''
-        })
-      }
-
-      // Refresh profile data
-      await loadUserData()
-      showNotification('success', 'Profile photo updated successfully!')
-      
-    } catch (error) {
-      console.error('Error uploading profile photo:', error)
-      showNotification('error', 'Failed to upload profile photo. Please try again.')
+      const publicUrl = getPublicUrl(filePath)
+      // Update profile in DB
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id)
+      if (updateError) throw updateError
+      setAvatarUrl(publicUrl)
+      setProfile((prev) => ({ ...prev, avatar_url: publicUrl }))
+    } catch (err) {
+      setAvatarError('Upload failed. Please try again.')
     } finally {
-      setUploadingPhoto(false)
+      setAvatarUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -326,7 +327,6 @@ export default function Settings() {
   }
 
   const displayName = formData.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'
-  const avatarUrl = profile?.avatar_url
 
   return (
     <Layout>
@@ -396,41 +396,31 @@ export default function Settings() {
                     <p className="text-gray-600 dark:text-gray-400">Update your personal information and profile details</p>
                   </div>
                   
-                  <div className="flex items-center space-x-6">
-                    <div className="relative">
+                  {/* Profile Photo Upload & Display */}
+                  <div className="relative flex flex-col items-center gap-2 mb-6">
+                    <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
                       {avatarUrl ? (
                         <img
                           src={avatarUrl}
                           alt="Profile"
-                          className="w-24 h-24 rounded-2xl object-cover shadow-lg"
+                          className="object-cover w-full h-full"
                         />
                       ) : (
-                        <div className="w-24 h-24 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center text-white text-3xl font-bold shadow-lg">
-                          {displayName.charAt(0).toUpperCase()}
-                        </div>
+                        <span className="text-4xl text-gray-400">👤</span>
                       )}
-                      <label className="absolute bottom-0 right-0 w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white hover:bg-gray-700 transition-colors duration-200 shadow-lg cursor-pointer">
-                        {uploadingPhoto ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Camera className="w-4 h-4" />
-                        )}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleProfilePhotoUpload}
-                          className="hidden"
-                          disabled={uploadingPhoto}
-                        />
-                      </label>
                     </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                        {displayName}
-                      </h3>
-                      <p className="text-gray-500 dark:text-gray-400">{user?.email}</p>
-                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">Free Plan</p>
-                    </div>
+                    <label className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded mt-2 hover:bg-blue-700 transition">
+                      {avatarUploading ? 'Uploading...' : 'Change Photo'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleAvatarUpload}
+                        disabled={avatarUploading}
+                        ref={fileInputRef}
+                      />
+                    </label>
+                    {avatarError && <div className="text-red-500 text-sm mt-1">{avatarError}</div>}
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

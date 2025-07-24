@@ -168,6 +168,9 @@ export default function Clients() {
           // Remove the client from the UI
           setClients(prev => prev.filter(c => c.id !== clientToRestore.id));
           
+          // Add the client back to the UI
+          setClients(prev => [clientToRestore, ...prev]);
+          
           try {
             // Show loading toast
             setToast({

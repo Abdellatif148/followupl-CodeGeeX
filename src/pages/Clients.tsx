@@ -160,39 +160,44 @@ export default function Clients() {
           }
           
           try {
-            // Montrer un toast de chargement
+            // Show loading toast
             setToast({
               type: 'info',
-              message: `Restauration de "${deletedClient.name}" en cours...`
+              message: `Restoring "${mostRecentlyDeletedClient.name}"...`
             });
             
-            // Créer directement un client simple
+            // Create simplified client object with essential data
             const newClient = {
-              name: deletedClient.name,
-              email: deletedClient.email || null,
-              phone: deletedClient.phone || null,
-              company: deletedClient.company || null,
+              name: mostRecentlyDeletedClient.name,
+              email: mostRecentlyDeletedClient.email || null,
+              phone: mostRecentlyDeletedClient.phone || null,
+              company: mostRecentlyDeletedClient.company || null,
               user_id: user.id,
-              platform: deletedClient.platform || 'direct',
-              status: 'active'
+              platform: mostRecentlyDeletedClient.platform || 'direct',
+              tags: mostRecentlyDeletedClient.tags || [],
+              status: 'active',
+              notes: mostRecentlyDeletedClient.notes || null
             };
             
-            // Ajouter immédiatement dans l'UI pour feedback instantané
-            setClients(prev => [deletedClient, ...prev]);
+            // Add to UI immediately for instant feedback
+            setClients(prev => [mostRecentlyDeletedClient, ...prev]);
             
-            // Créer le client dans la base de données
+            // Create client in database
             await clientsApi.create(newClient);
             
-            // Recharger tous les clients pour être sûr d'avoir des données cohérentes
+            // Reload all clients to ensure data consistency
             await loadClients();
             
-            // Toast de succès
+            // Success toast
             setToast({
               type: 'success',
-              message: `Client "${deletedClient.name}" restauré avec succès`
+              message: `Client "${mostRecentlyDeletedClient.name}" restored successfully`
             });
             
-            // Nettoyer l'état
+            // Remove the restored client from history
+            setDeletedClientsHistory(prev => prev.filter((_, index) => index !== 0));
+            
+            // Clean up state
             setDeletedClient(null);
           } catch (error) {
             console.error("Erreur de restauration:", error);
@@ -408,7 +413,7 @@ export default function Clients() {
                   className="toast-undo-button ml-4 flex items-center gap-2 bg-blue-500 dark:bg-blue-600 text-white px-5 py-2 rounded-lg text-base font-bold hover:bg-blue-600 dark:hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
                 >
                   <Undo className="w-5 h-5" />
-                  UNDO
+                  UNDO DELETE
                 </button>
               )}
             </div>

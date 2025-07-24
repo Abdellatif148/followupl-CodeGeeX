@@ -300,11 +300,23 @@ export default function Clients() {
               ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
               : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300'
           }`}>
-            <div className="flex items-center gap-3">
-              {toast.type === 'success' && <CheckCircle className="w-5 h-5" />}
-              {toast.type === 'error' && <XCircle className="w-5 h-5" />}
-              {toast.type === 'info' && <AlertTriangle className="w-5 h-5" />}
-              <span className="font-medium">{toast.message}</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {toast.type === 'success' && <CheckCircle className="w-5 h-5" />}
+                {toast.type === 'error' && <XCircle className="w-5 h-5" />}
+                {toast.type === 'info' && <AlertTriangle className="w-5 h-5" />}
+                <span className="font-medium">{toast.message}</span>
+              </div>
+              
+              {toast.undoAction && (
+                <button 
+                  onClick={toast.undoAction}
+                  className="ml-4 flex items-center gap-1 bg-white dark:bg-gray-700 px-3 py-1 rounded-md text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors duration-200"
+                >
+                  <Undo className="w-4 h-4" />
+                  Undo
+                </button>
+              )}
             </div>
           </div>
         )}

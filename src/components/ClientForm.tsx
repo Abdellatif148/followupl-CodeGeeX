@@ -17,8 +17,8 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
     name: '',
     email: '',
     phone: '',
-    company: '',
-    project: '',
+    platform_profile: '',
+    notes: '',
     tags: '',
     status: 'active'
   })
@@ -34,8 +34,8 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
         name: editingClient.name || '',
         email: editingClient.email || '',
         phone: editingClient.phone || '',
-        company: editingClient.company || '',
-        project: editingClient.notes || '',
+        platform_profile: editingClient.platform_profile || '',
+        notes: editingClient.notes || '',
         tags: editingClient.tags?.join(', ') || '',
         status: editingClient.status || 'active'
       })
@@ -104,8 +104,8 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
         name: formData.name.trim(),
         email: formData.email.trim() || null,
         phone: formData.phone.trim() || null,
-        company: formData.company.trim() || null,
-        notes: formData.project.trim() || null,
+        platform_profile: formData.platform_profile.trim() || null,
+        notes: formData.notes.trim() || null,
         tags: tagsArray,
         platform: 'direct',
         status: formData.status as 'active' | 'inactive' | 'archived',
@@ -152,8 +152,8 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
           name: '',
           email: '',
           phone: '',
-          company: '',
-          project: '',
+          platform_profile: '',
+          notes: '',
           tags: '',
           status: 'active'
         })
@@ -294,19 +294,19 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
           </div>
 
           <div>
-            <label htmlFor="company" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Company Name
+            <label htmlFor="platform_profile" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Platform Profile
             </label>
             <div className="relative">
               <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
               <input
                 type="text"
-                id="company"
-                name="company"
-                value={formData.company}
+                id="platform_profile"
+                name="platform_profile"
+                value={formData.platform_profile}
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
-                placeholder="Company Inc."
+                placeholder="Username or profile link"
                 disabled={isSubmitting}
               />
             </div>
@@ -314,15 +314,15 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
         </div>
 
         <div>
-          <label htmlFor="project" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {editingClient ? 'Notes' : 'Project Title'}
+          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {editingClient ? 'Notes' : 'Project Notes'}
           </label>
           <div className="relative">
             <FileText className="absolute left-3 top-3 text-gray-400 dark:text-gray-500 w-5 h-5" />
             <textarea
-              id="project"
-              name="project"
-              value={formData.project}
+              id="notes"
+              name="notes"
+              value={formData.notes}
               onChange={handleInputChange}
               rows={3}
               className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"

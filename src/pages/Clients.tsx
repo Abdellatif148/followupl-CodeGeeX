@@ -104,8 +104,10 @@ export default function Clients() {
     try {
       console.log("Deleting client:", client.name);
       
-      // Store client data before deleting
-      setDeletedClient({...client});
+      // Store client data before deleting - make a deep copy to ensure all data is preserved
+      const clientCopy = JSON.parse(JSON.stringify(client));
+      console.log("Client backup created:", clientCopy);
+      setDeletedClient(clientCopy);
       
       // Delete the client
       await clientsApi.delete(client.id);
@@ -338,7 +340,7 @@ export default function Clients() {
               {toast.undoAction && (
                 <button 
                   onClick={toast.undoAction}
-                  className="ml-4 flex items-center gap-2 bg-blue-500 dark:bg-blue-600 text-white px-5 py-2 rounded-lg text-base font-bold hover:bg-blue-600 dark:hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
+                  className="toast-undo-button ml-4 flex items-center gap-2 bg-blue-500 dark:bg-blue-600 text-white px-5 py-2 rounded-lg text-base font-bold hover:bg-blue-600 dark:hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
                 >
                   <Undo className="w-5 h-5" />
                   UNDO

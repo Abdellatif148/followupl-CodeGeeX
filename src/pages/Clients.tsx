@@ -144,7 +144,11 @@ export default function Clients() {
       undoTimerRef.current = null
     }
     
-    if (!deletedClient) return
+    if (!deletedClient) {
+      console.log("No deleted client data available to restore");
+      return;
+    }
+    console.log("Attempting to restore client:", deletedClient.name)
     
     try {
       // Re-create the client from our backup

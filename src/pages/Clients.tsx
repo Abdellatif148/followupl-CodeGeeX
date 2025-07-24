@@ -28,6 +28,9 @@ export default function Clients() {
     message: string
     undoAction?: () => void
   } | null>(null)
+  // Track history of deleted clients to allow restoring the most recent one
+  const [deletedClientsHistory, setDeletedClientsHistory] = useState<Client[]>([])
+  // For backward compatibility
   const [deletedClient, setDeletedClient] = useState<Client | null>(null)
   const undoTimerRef = useRef<NodeJS.Timeout | null>(null)
 

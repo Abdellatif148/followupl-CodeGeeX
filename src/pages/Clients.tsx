@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
-  Plus, Search, Filter, Edit, Trash2, Undo, 
+  Plus, Search, Filter, Edit, Trash2, 
   Mail, Phone, ExternalLink, Tag, Calendar, DollarSign,
   CheckCircle, XCircle, AlertTriangle, ToggleLeft, ToggleRight
 } from 'lucide-react'
@@ -26,39 +26,19 @@ export default function Clients() {
   const [toast, setToast] = useState<{
     type: 'success' | 'error' | 'info'
     message: string
-    undoAction?: () => void
   } | null>(null)
-  // Track history of deleted clients to allow restoring the most recent one
-  const [deletedClientsHistory, setDeletedClientsHistory] = useState<Client[]>([])
-  // For backward compatibility
-  const [deletedClient, setDeletedClient] = useState<Client | null>(null)
-  const undoTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     loadClients()
   }, [])
 
-  // Auto-hide toast after 6 seconds for delete actions with undo, 3 seconds for others
+  // Auto-hide toast after 3 seconds
   useEffect(() => {
     if (toast) {
-      const duration = toast.undoAction ? 6000 : 3000
-      const timer = setTimeout(() => {
-        setToast(null)
-        // If this was a delete toast that timed out, clear the deletedClient state
-        if (toast.undoAction && deletedClient) {
-          setDeletedClient(null)
-        }
-      }, duration)
-      
-      undoTimerRef.current = timer
-      return () => {
-        if (undoTimerRef.current) {
-          clearTimeout(undoTimerRef.current)
-          undoTimerRef.current = null
-        }
-      }
+      const timer = setTimeout(() => setToast(null), 3000)
+      return () => clearTimeout(timer)
     }
-  }, [toast, deletedClient])
+  }, [toast])
 
   const loadClients = async () => {
     try {
@@ -104,187 +84,31 @@ export default function Clients() {
   }
 
   const handleDeleteClient = async (client: Client) => {
-    try {
-      console.log("Deleting client:", client.name);
-      
-      // Store client data before deleting - make a deep copy to ensure all data is preserved
-      const clientCopy = JSON.parse(JSON.stringify(client));
-      console.log("Client backup created:", clientCopy);
-      
-      // Store the specific client that was deleted
-      setDeletedClient(clientCopy);
-      
-      // Add to deletion history (most recent at the beginning)
-      setDeletedClientsHistory(prev => [clientCopy, ...prev.slice(0, 9)]);
-      
-      // Delete the client
-      await clientsApi.delete(client.id);
-      
-      // Track deletion action
-      trackClientAction('delete', {
-        client_id: client.id,
-        had_company: !!client.company,
-        tags_count: client.tags?.length || 0
-      });
-      
-      // Update UI immediately
-      setClients(prevClients => prevClients.filter(c => c.id !== client.id));
-      
-      // Show toast with undo option
-      setToast({
-        type: 'success',
-        message: `Client "${client.name}" deleted`,
-        undoAction: async () => {
-          console.log("UNDO button clicked - executing one-step restoration");
-          
-          // Annuler le timer si existant
-          if (undoTimerRef.current) {
-            clearTimeout(undoTimerRef.current);
-            undoTimerRef.current = null;
-          }
-          
-          // Feedback visuel du bouton
-          document.querySelector('.toast-undo-button')?.classList.add('bg-green-600');
-          
-          // Get the specific client that was just deleted
-          const clientToRestore = deletedClient;
-          
-          // Check if we have a client to restore
-          if (!clientToRestore) {
-            console.error("Error: No client available to restore");
-            setToast({
-              type: 'error',
-              message: 'Unable to restore client: No recently deleted clients found'
-            });
-            return;
-          }
-          
-          // Remove the client from the history
-          setDeletedClientsHistory(prev => prev.filter(c => c.id !== clientToRestore.id));
-          
-          // Clear the deletedClient state
-          setDeletedClient(null);
-          
-          // Remove the client from the UI
-          setClients(prev => prev.filter(c => c.id !== clientToRestore.id));
-          
-          // Add the client back to the UI
-          setClients(prev => [clientToRestore, ...prev]);
-          
-          // Create the client in the database
-          await clientsApi.create(clientToRestore);
-          
-          try {
-            // Show loading toast
-            setToast({
-              type: 'info',
-              message: `Restoring "${mostRecentlyDeletedClient.name}"...`
-            });
-            
-            // Create simplified client object with essential data
-            const newClient = {
-              name: mostRecentlyDeletedClient.name,
-              email: mostRecentlyDeletedClient.email || null,
-              phone: mostRecentlyDeletedClient.phone || null,
-              company: mostRecentlyDeletedClient.company || null,
-              user_id: user.id,
-              platform: mostRecentlyDeletedClient.platform || 'direct',
-              tags: mostRecentlyDeletedClient.tags || [],
-              status: 'active',
-              notes: mostRecentlyDeletedClient.notes || null
-            };
-            
-            // Add to UI immediately for instant feedback
-            setClients(prev => [mostRecentlyDeletedClient, ...prev]);
-            
-            // Create client in database
-            await clientsApi.create(newClient);
-            
-            // Reload all clients to ensure data consistency
-            await loadClients();
-            
-            // Success toast
-            setToast({
-              type: 'success',
-              message: `Client "${mostRecentlyDeletedClient.name}" restored successfully`
-            });
-            
-            // Remove the restored client from history
-            setDeletedClientsHistory(prev => prev.filter((_, index) => index !== 0));
-            
-            // Clean up state
-            setDeletedClient(null);
-          } catch (error) {
-            console.error("Erreur de restauration:", error);
-            setToast({
-              type: 'error',
-              message: 'Erreur lors de la restauration du client'
-            });
-          }
-        }
-      })
-      
-    } catch (error) {
-      console.error('Error deleting client:', error)
-      setToast({
-        type: 'error',
-        message: 'Failed to delete client. Please try again.'
-      })
-      // Clear backup if deletion failed
-      setDeletedClient(null)
-    }
-  }
-  
-  // Function to handle undo delete action
-  const handleUndoDelete = async () => {
-    // Cancel the timer
-    if (undoTimerRef.current) {
-      clearTimeout(undoTimerRef.current)
-      undoTimerRef.current = null
-    }
-    
-    if (!deletedClient) {
-      console.log("No deleted client data available to restore");
-      return;
-    }
-    console.log("Attempting to restore client:", deletedClient.name)
-    
-    try {
-      // Re-create the client from our backup
-      // Create a new client object without the id property (let Supabase generate a new one)
-      // Créer un client avec uniquement les champs essentiels
-      const clientToRestore = {
-        name: deletedClient.name,
-        email: deletedClient.email || null,
-        phone: deletedClient.phone || null,
-        company: deletedClient.company || null,
-        user_id: user.id,
-        platform: deletedClient.platform || 'direct',
-        status: 'active',
-        tags: deletedClient.tags || []
-      };
-      
-      console.log("Client data to restore:", clientToRestore);
-      await clientsApi.create(clientToRestore)
-      
-      // Reload clients to show the restored client
-      await loadClients()
-      
-      // Show success message
-      setToast({
-        type: 'success',
-        message: `Client "${deletedClient.name}" restored`
-      })
-      
-      // Clear the backup
-      setDeletedClient(null)
-      
-    } catch (error) {
-      console.error('Error restoring client:', error)
-      setToast({
-        type: 'error',
-        message: 'Failed to restore client. Please try again.'
-      })
+    if (window.confirm(`Are you sure you want to delete ${client.name}? This action cannot be undone.`)) {
+      try {
+        await clientsApi.delete(client.id)
+        
+        // Track delete action
+        trackClientAction('delete', {
+          client_id: client.id,
+          had_company: !!client.company,
+          tags_count: client.tags?.length || 0
+        })
+        
+        // Show success toast
+        setToast({
+          type: 'success',
+          message: 'Client deleted ❌'
+        })
+        
+        loadClients()
+      } catch (error) {
+        console.error('Error deleting client:', error)
+        setToast({
+          type: 'error',
+          message: 'Failed to delete client. Please try again.'
+        })
+      }
     }
   }
 
@@ -407,30 +231,18 @@ export default function Clients() {
 
         {/* Toast Notification */}
         {toast && (
-          <div className={`fixed bottom-8 right-8 z-50 p-5 rounded-xl shadow-xl border-2 transition-all duration-300 animate-fadeIn ${
+          <div className={`fixed top-20 right-4 z-50 p-4 rounded-lg shadow-lg border transition-all duration-300 ${
             toast.type === 'success' 
               ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300'
               : toast.type === 'error'
               ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
               : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300'
           }`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {toast.type === 'success' && <CheckCircle className="w-5 h-5" />}
-                {toast.type === 'error' && <XCircle className="w-5 h-5" />}
-                {toast.type === 'info' && <AlertTriangle className="w-5 h-5" />}
-                <span className="font-medium">{toast.message}</span>
-              </div>
-              
-              {toast.undoAction && (
-                <button 
-                  onClick={toast.undoAction}
-                  className="toast-undo-button ml-4 flex items-center gap-2 bg-blue-500 dark:bg-blue-600 text-white px-5 py-2 rounded-lg text-base font-bold hover:bg-blue-600 dark:hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
-                >
-                  <Undo className="w-5 h-5" />
-                  UNDO DELETE
-                </button>
-              )}
+            <div className="flex items-center gap-3">
+              {toast.type === 'success' && <CheckCircle className="w-5 h-5" />}
+              {toast.type === 'error' && <XCircle className="w-5 h-5" />}
+              {toast.type === 'info' && <AlertTriangle className="w-5 h-5" />}
+              <span className="font-medium">{toast.message}</span>
             </div>
           </div>
         )}

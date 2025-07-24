@@ -611,28 +611,15 @@ export default function Settings() {
                     <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-md mx-auto">
                       We're working on bringing you premium features and subscription plans. Stay tuned for updates!
                     </p>
-                    <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-6 mb-6 flex flex-col md:flex-row gap-6 justify-center items-stretch">
-                      {/* Free Plan Card */}
-                      <div className="flex-1 flex flex-col justify-between bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-6">
+                      <div className="flex items-center justify-between">
                         <div>
                           <h4 className="text-xl font-bold text-blue-900 dark:text-blue-300">Free Plan</h4>
                           <p className="text-blue-700 dark:text-blue-400">Current plan - All features included</p>
                         </div>
-                        {profile?.plan === 'free' && (
-                          <span className="px-4 py-2 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 rounded-lg font-semibold mt-4">Active</span>
-                        )}
-                      </div>
-                      {/* Pro Plan Card */}
-                      <div className="flex-1 flex flex-col justify-between bg-white dark:bg-gray-800 rounded-2xl p-6 border border-yellow-200 dark:border-yellow-700 shadow-sm">
-                        <div>
-                          <h4 className="text-xl font-bold text-yellow-900 dark:text-yellow-300">Pro Plan</h4>
-                          <p className="text-yellow-700 dark:text-yellow-400">Unlock AI assistant, advanced analytics, and more</p>
-                        </div>
-                        {profile?.plan === 'pro' || profile?.plan === 'super_pro' ? (
-                          <span className="px-4 py-2 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 rounded-lg font-semibold mt-4">Active</span>
-                        ) : (
-                          <button className="mt-4 px-4 py-2 bg-gradient-to-r from-yellow-400 to-yellow-600 text-white rounded-lg font-semibold shadow hover:from-yellow-500 hover:to-yellow-700 transition">Upgrade to Pro</button>
-                        )}
+                        <span className="px-4 py-2 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 rounded-lg font-semibold">
+                          Active
+                        </span>
                       </div>
                     </div>
                   </div>

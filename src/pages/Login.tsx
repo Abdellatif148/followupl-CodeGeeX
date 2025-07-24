@@ -6,8 +6,6 @@ import { useNavigate, Link } from 'react-router-dom'
 import DarkModeToggle from '../components/DarkModeToggle'
 import GoogleAuthButton from '../components/GoogleAuthButton'
 import { useAuthAnalytics } from '../hooks/useAnalytics'
-import WelcomeMessage from '../components/WelcomeMessage'
-import { showToast } from '../utils/toast'
 
 export default function Login() {
   const { trackLogin } = useAuthAnalytics()
@@ -49,21 +47,6 @@ export default function Login() {
 
     return () => subscription.unsubscribe()
   }, [navigate])
-
-  useEffect(() => {
-    showToast({
-      message: '👋 Welcome back!',
-      duration: 7000,
-      position: 'top',
-      style: {
-        backgroundColor: '#4CAF50',
-        color: '#fff',
-        fontSize: '16px',
-        padding: '12px',
-        borderRadius: '10px'
-      }
-    });
-  }, []);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -116,7 +99,7 @@ export default function Login() {
       <Helmet>
         <title>Sign In - FollowUply | AI Client Tracker for Freelancers</title>
         <meta name="description" content="Sign in to your FollowUply account to manage clients, track invoices, and never miss a follow-up again." />
-        <link rel="canonical" href="https://fcodegeex.vercel.app/login" />
+        <link rel="canonical" href="https://followuply.vercel.app/login" />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
       {/* Navigation */}

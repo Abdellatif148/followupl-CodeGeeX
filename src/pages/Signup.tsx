@@ -185,7 +185,7 @@ export default function Signup() {
       <Helmet>
         <title>Sign Up Free - FollowUply | AI Client Tracker for Freelancers</title>
         <meta name="description" content="Create your free FollowUply account and start organizing your freelance business with AI-powered client tracking and invoice reminders." />
-        <link rel="canonical" href="https://fcodegeex.vercel.app/signup" />
+        <link rel="canonical" href="https://followuply.vercel.app/signup" />
         <meta name="robots" content="index, follow" />
       </Helmet>
       {/* Navigation */}

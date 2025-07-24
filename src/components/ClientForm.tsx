@@ -3,7 +3,7 @@ import { User, Mail, Phone, Building, FileText, Tag, Loader2, CheckCircle, Alert
 import { clientsApi } from '../lib/database'
 import { supabase } from '../lib/supabase'
 import { useBusinessAnalytics } from '../hooks/useAnalytics'
-import type { Client, ClientInsert } from '../types/database'
+import type { Client } from '../types/database'
 
 interface ClientFormProps {
   onSuccess?: () => void
@@ -17,11 +17,10 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
     name: '',
     email: '',
     phone: '',
-    platform_profile: '',
-    notes: '',
+    company: '',
+    project: '',
     tags: '',
-    status: 'active',
-    contact_method: 'email'
+    status: 'active'
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [notification, setNotification] = useState<{
@@ -35,11 +34,10 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
         name: editingClient.name || '',
         email: editingClient.email || '',
         phone: editingClient.phone || '',
-        platform_profile: editingClient.platform_profile || '',
-        notes: editingClient.notes || '',
+        company: editingClient.company || '',
+        project: editingClient.notes || '',
         tags: editingClient.tags?.join(', ') || '',
-        status: editingClient.status || 'active',
-        contact_method: editingClient.contact_method || 'email'
+        status: editingClient.status || 'active'
       })
     }
   }, [editingClient])
@@ -101,21 +99,16 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
         .map(tag => tag.trim())
         .filter(tag => tag.length > 0)
 
-      const clientData: ClientInsert = {
+      const clientData = {
         user_id: user.id,
         name: formData.name.trim(),
         email: formData.email.trim() || null,
         phone: formData.phone.trim() || null,
-        platform_profile: formData.platform_profile.trim() || null,
-        notes: formData.notes.trim() || null,
+        company: formData.company.trim() || null,
+        notes: formData.project.trim() || null,
         tags: tagsArray,
-        platform: 'direct',
-        contact_method: formData.contact_method as 'email' | 'whatsapp' | 'telegram' | 'discord' | 'other',
-        status: formData.status as 'active' | 'inactive' | 'archived',
-        total_projects: 0,
-        total_earned: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        platform: 'direct' as const,
+        status: formData.status as 'active' | 'inactive' | 'archived'
       }
 
       if (editingClient) {
@@ -155,11 +148,10 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
           name: '',
           email: '',
           phone: '',
-          platform_profile: '',
-          notes: '',
+          company: '',
+          project: '',
           tags: '',
-          status: 'active',
-          contact_method: 'email'
+          status: 'active'
         })
       }
 
@@ -168,12 +160,11 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
         onSuccess?.()
       }, editingClient ? 100 : 1500) // Immediate for edits, delay for new clients
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error saving client:', error)
-      const errorMessage = error?.message || `Failed to ${editingClient ? 'update' : 'add'} client. Please try again.`
       setNotification({
         type: 'error',
-        message: errorMessage
+        message: `Failed to ${editingClient ? 'update' : 'add'} client. Please try again.`
       })
     } finally {
       setIsSubmitting(false)
@@ -298,19 +289,19 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
           </div>
 
           <div>
-            <label htmlFor="platform_profile" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Platform Profile
+            <label htmlFor="company" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Company Name
             </label>
             <div className="relative">
               <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
               <input
                 type="text"
-                id="platform_profile"
-                name="platform_profile"
-                value={formData.platform_profile}
+                id="company"
+                name="company"
+                value={formData.company}
                 onChange={handleInputChange}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
-                placeholder="Username or profile link"
+                placeholder="Company Inc."
                 disabled={isSubmitting}
               />
             </div>
@@ -318,15 +309,15 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
         </div>
 
         <div>
-          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {editingClient ? 'Notes' : 'Project Notes'}
+          <label htmlFor="project" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {editingClient ? 'Notes' : 'Project Title'}
           </label>
           <div className="relative">
             <FileText className="absolute left-3 top-3 text-gray-400 dark:text-gray-500 w-5 h-5" />
             <textarea
-              id="notes"
-              name="notes"
-              value={formData.notes}
+              id="project"
+              name="project"
+              value={formData.project}
               onChange={handleInputChange}
               rows={3}
               className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"

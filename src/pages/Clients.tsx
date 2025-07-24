@@ -27,6 +27,8 @@ export default function Clients() {
     type: 'success' | 'error' | 'info'
     message: string
   } | null>(null)
+  const [undoClient, setUndoClient] = useState<Client | null>(null)
+  const [undoTimer, setUndoTimer] = useState<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     loadClients()
@@ -87,16 +89,24 @@ export default function Clients() {
     if (window.confirm(`Are you sure you want to delete ${client.name}? This action cannot be undone.`)) {
       try {
         await clientsApi.delete(client.id)
+        
         // Track delete action
         trackClientAction('delete', {
           client_id: client.id,
           had_company: !!client.company,
           tags_count: client.tags?.length || 0
         })
+        
+        setUndoClient(client)
+        if (undoTimer) clearTimeout(undoTimer)
+        const timer = setTimeout(() => setUndoClient(null), 10000)
+        setUndoTimer(timer)
+        // Show success toast
         setToast({
           type: 'success',
           message: 'Client deleted ❌'
         })
+        
         loadClients()
       } catch (error) {
         console.error('Error deleting client:', error)
@@ -105,6 +115,27 @@ export default function Clients() {
           message: 'Failed to delete client. Please try again.'
         })
       }
+    }
+  }
+
+  const handleUndoDelete = async () => {
+    if (!undoClient) return
+    try {
+      // Remove id so Supabase generates a new one
+      const { id, created_at, updated_at, ...clientData } = undoClient
+      await clientsApi.create({ ...clientData })
+      setUndoClient(null)
+      if (undoTimer) clearTimeout(undoTimer)
+      setToast({
+        type: 'success',
+        message: 'Client restored! ✅'
+      })
+      loadClients()
+    } catch (error) {
+      setToast({
+        type: 'error',
+        message: 'Failed to restore client.'
+      })
     }
   }
 
@@ -208,6 +239,18 @@ export default function Clients() {
   return (
     <Layout>
       <div className="p-6 space-y-6">
+        {/* Undo Snackbar */}
+        {undoClient && (
+          <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 bg-gray-900 text-white px-6 py-3 rounded-lg shadow-lg flex items-center space-x-4 animate-fade-in">
+            <span>Client deleted.</span>
+            <button
+              onClick={handleUndoDelete}
+              className="bg-green-500 hover:bg-green-600 text-white font-semibold px-4 py-2 rounded transition"
+            >
+              Undo
+            </button>
+          </div>
+        )}
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>

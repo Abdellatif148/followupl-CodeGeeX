@@ -111,11 +111,11 @@ export default function Clients() {
       const clientCopy = JSON.parse(JSON.stringify(client));
       console.log("Client backup created:", clientCopy);
       
+      // Store the specific client that was deleted
+      setDeletedClient(clientCopy);
+      
       // Add to deletion history (most recent at the beginning)
       setDeletedClientsHistory(prev => [clientCopy, ...prev.slice(0, 9)]);
-      
-      // For backward compatibility
-      setDeletedClient(clientCopy);
       
       // Delete the client
       await clientsApi.delete(client.id);

@@ -125,7 +125,14 @@ export default function Clients() {
         type: 'success',
         message: `Client "${client.name}" deleted`,
         undoAction: () => {
-          console.log("Undo button clicked");
+          console.log("UNDO button clicked - immediate reaction");
+          // Feedback visuel immédiat pour montrer que le bouton a été cliqué
+          document.querySelector('.toast-undo-button')?.classList.add('bg-green-600');
+          // Ajouter le client à l'interface avant même l'appel à l'API
+          if (deletedClient) {
+            setClients(prev => [deletedClient, ...prev]);
+          }
+          // Appeler la fonction de restauration
           handleUndoDelete();
         }
       })
@@ -158,17 +165,19 @@ export default function Clients() {
     try {
       // Re-create the client from our backup
       // Create a new client object without the id property (let Supabase generate a new one)
-      const { id, ...clientDataWithoutId } = deletedClient;
-      
-      // Add required properties
+      // Créer un client avec uniquement les champs essentiels
       const clientToRestore = {
-        ...clientDataWithoutId,
+        name: deletedClient.name,
+        email: deletedClient.email || null,
+        phone: deletedClient.phone || null,
+        company: deletedClient.company || null,
         user_id: user.id,
-        contact_method: deletedClient.contact_method || 'email',
         platform: deletedClient.platform || 'direct',
-        updated_at: new Date().toISOString()
+        status: 'active',
+        tags: deletedClient.tags || []
       };
       
+      console.log("Client data to restore:", clientToRestore);
       await clientsApi.create(clientToRestore)
       
       // Reload clients to show the restored client

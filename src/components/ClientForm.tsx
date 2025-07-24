@@ -20,7 +20,8 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
     platform_profile: '',
     notes: '',
     tags: '',
-    status: 'active'
+    status: 'active',
+    contact_method: 'email'
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [notification, setNotification] = useState<{
@@ -37,7 +38,8 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
         platform_profile: editingClient.platform_profile || '',
         notes: editingClient.notes || '',
         tags: editingClient.tags?.join(', ') || '',
-        status: editingClient.status || 'active'
+        status: editingClient.status || 'active',
+        contact_method: editingClient.contact_method || 'email'
       })
     }
   }, [editingClient])
@@ -108,6 +110,7 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
         notes: formData.notes.trim() || null,
         tags: tagsArray,
         platform: 'direct',
+        contact_method: formData.contact_method as 'email' | 'whatsapp' | 'telegram' | 'discord' | 'other',
         status: formData.status as 'active' | 'inactive' | 'archived',
         total_projects: 0,
         total_earned: 0,
@@ -155,7 +158,8 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
           platform_profile: '',
           notes: '',
           tags: '',
-          status: 'active'
+          status: 'active',
+          contact_method: 'email'
         })
       }
 

@@ -121,9 +121,9 @@ export default function Clients() {
   const handleUndoDelete = async () => {
     if (!undoClient) return
     try {
-      // Remove id so Supabase generates a new one if needed, or keep it if you want to restore the same id
+      // Remove id so Supabase generates a new one
       const { id, created_at, updated_at, ...clientData } = undoClient
-      await clientsApi.create({ ...clientData, id })
+      await clientsApi.create({ ...clientData })
       setUndoClient(null)
       if (undoTimer) clearTimeout(undoTimer)
       setToast({

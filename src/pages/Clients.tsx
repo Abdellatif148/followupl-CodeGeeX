@@ -171,6 +171,9 @@ export default function Clients() {
           // Add the client back to the UI
           setClients(prev => [clientToRestore, ...prev]);
           
+          // Create the client in the database
+          await clientsApi.create(clientToRestore);
+          
           try {
             // Show loading toast
             setToast({

@@ -165,6 +165,9 @@ export default function Clients() {
           // Clear the deletedClient state
           setDeletedClient(null);
           
+          // Remove the client from the UI
+          setClients(prev => prev.filter(c => c.id !== clientToRestore.id));
+          
           try {
             // Show loading toast
             setToast({

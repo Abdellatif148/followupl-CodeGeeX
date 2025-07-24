@@ -6,7 +6,7 @@ import {
   Plus, ArrowRight, AlertTriangle, CheckCircle
 } from 'lucide-react'
 import Layout from '../components/Layout'
-import { dashboardApi } from '../lib/database'
+import { dashboardApi, timeEntriesApi, expensesApi, analyticsApi } from '../lib/database'
 import { supabase } from '../lib/supabase'
 import { useCurrency } from '../hooks/useCurrency'
 
@@ -28,6 +28,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
   const { formatCurrency } = useCurrency()
+  const [timeStats, setTimeStats] = useState<any>(null)
+  const [expenseStats, setExpenseStats] = useState<any>(null)
+  const [combinedStats, setCombinedStats] = useState<any>(null)
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -38,6 +41,32 @@ export default function Dashboard() {
         if (user) {
           const dashboardStats = await dashboardApi.getStats(user.id)
           setStats(dashboardStats)
+          // Fetch analytics (mocked for now)
+          // Replace with: await timeEntriesApi.getAnalytics(user.id), etc.
+          setTimeStats({
+            totalHours: 42,
+            billableHours: 36,
+            nonBillableHours: 6,
+            byClient: [{ client: 'Client A', hours: 20 }, { client: 'Client B', hours: 22 }],
+            byProject: [{ project: 'Project X', hours: 15 }],
+            topTasks: [{ description: 'Design', hours: 10 }],
+            trend: [8, 7, 6, 10, 11]
+          })
+          setExpenseStats({
+            totalExpenses: 1200,
+            billable: 900,
+            nonBillable: 300,
+            byCategory: [{ category: 'Software', amount: 500 }, { category: 'Travel', amount: 700 }],
+            byClient: [{ client: 'Client A', amount: 600 }],
+            recent: [{ description: 'Adobe', amount: 50 }],
+            trend: [200, 300, 250, 150, 300]
+          })
+          setCombinedStats({
+            profit: 3000,
+            avgHourlyRate: 75,
+            unbilledHours: 5,
+            unbilledExpenses: 100
+          })
         }
       } catch (error) {
         console.error('Error loading dashboard:', error)
@@ -79,6 +108,71 @@ export default function Dashboard() {
   return (
     <Layout>
       <div className="p-6 space-y-6">
+        {/* Analytics Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-800 dark:to-blue-900/20 rounded-2xl p-6 border border-blue-200 dark:border-blue-700 shadow-sm">
+            <p className="text-sm font-medium text-blue-800 dark:text-blue-300">Total Hours (This Month)</p>
+            <p className="text-3xl font-bold text-blue-900 dark:text-white">{timeStats?.totalHours ?? '--'}</p>
+          </div>
+          <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-gray-800 dark:to-green-900/20 rounded-2xl p-6 border border-green-200 dark:border-green-700 shadow-sm">
+            <p className="text-sm font-medium text-green-800 dark:text-green-300">Total Expenses (This Month)</p>
+            <p className="text-3xl font-bold text-green-900 dark:text-white">${expenseStats?.totalExpenses ?? '--'}</p>
+          </div>
+          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-gray-800 dark:to-yellow-900/20 rounded-2xl p-6 border border-yellow-200 dark:border-yellow-700 shadow-sm">
+            <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">Profit</p>
+            <p className="text-3xl font-bold text-yellow-900 dark:text-white">${combinedStats?.profit ?? '--'}</p>
+          </div>
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-gray-800 dark:to-purple-900/20 rounded-2xl p-6 border border-purple-200 dark:border-purple-700 shadow-sm">
+            <p className="text-sm font-medium text-purple-800 dark:text-purple-300">Avg Hourly Rate</p>
+            <p className="text-3xl font-bold text-purple-900 dark:text-white">${combinedStats?.avgHourlyRate ?? '--'}</p>
+          </div>
+        </div>
+        {/* Analytics Charts Placeholders */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h2 className="text-lg font-bold mb-2">Billable vs Non-Billable Hours</h2>
+            <div className="h-32 flex items-center justify-center text-gray-400">[Pie Chart Placeholder]</div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h2 className="text-lg font-bold mb-2">Expenses by Category</h2>
+            <div className="h-32 flex items-center justify-center text-gray-400">[Pie Chart Placeholder]</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h2 className="text-lg font-bold mb-2">Time Trend (Last 5 Weeks)</h2>
+            <div className="h-32 flex items-center justify-center text-gray-400">[Line Chart Placeholder]</div>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h2 className="text-lg font-bold mb-2">Expenses Trend (Last 5 Weeks)</h2>
+            <div className="h-32 flex items-center justify-center text-gray-400">[Line Chart Placeholder]</div>
+          </div>
+        </div>
+        {/* Top Tasks and Recent Expenses Tables */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h2 className="text-lg font-bold mb-2">Top Tasks by Time</h2>
+            <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+              {timeStats?.topTasks?.map((task: any, idx: number) => (
+                <li key={idx} className="py-2 flex justify-between">
+                  <span>{task.description}</span>
+                  <span className="font-semibold">{task.hours}h</span>
+                </li>
+              )) ?? <li className="py-2 text-gray-400">No data</li>}
+            </ul>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+            <h2 className="text-lg font-bold mb-2">Recent Expenses</h2>
+            <ul className="divide-y divide-gray-200 dark:divide-gray-700">
+              {expenseStats?.recent?.map((exp: any, idx: number) => (
+                <li key={idx} className="py-2 flex justify-between">
+                  <span>{exp.description}</span>
+                  <span className="font-semibold">${exp.amount}</span>
+                </li>
+              )) ?? <li className="py-2 text-gray-400">No data</li>}
+            </ul>
+          </div>
+        </div>
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>

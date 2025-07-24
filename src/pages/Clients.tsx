@@ -146,11 +146,11 @@ export default function Clients() {
           // Feedback visuel du bouton
           document.querySelector('.toast-undo-button')?.classList.add('bg-green-600');
           
-          // Get the most recently deleted client from history
-          const mostRecentlyDeletedClient = deletedClientsHistory.length > 0 ? deletedClientsHistory[0] : deletedClient;
+          // Get the specific client that was just deleted
+          const clientToRestore = deletedClient;
           
           // Check if we have a client to restore
-          if (!mostRecentlyDeletedClient) {
+          if (!clientToRestore) {
             console.error("Error: No client available to restore");
             setToast({
               type: 'error',

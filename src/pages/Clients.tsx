@@ -148,10 +148,19 @@ export default function Clients() {
     
     try {
       // Re-create the client from our backup
-      await clientsApi.create({
-        ...deletedClient,
-        id: deletedClient.id // Ensure ID is preserved
-      })
+      // Create a new client object without the id property (let Supabase generate a new one)
+      const { id, ...clientDataWithoutId } = deletedClient;
+      
+      // Add required properties
+      const clientToRestore = {
+        ...clientDataWithoutId,
+        user_id: user.id,
+        contact_method: deletedClient.contact_method || 'email',
+        platform: deletedClient.platform || 'direct',
+        updated_at: new Date().toISOString()
+      };
+      
+      await clientsApi.create(clientToRestore)
       
       // Reload clients to show the restored client
       await loadClients()

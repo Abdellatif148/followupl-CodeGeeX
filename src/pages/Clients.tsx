@@ -311,7 +311,7 @@ export default function Clients() {
 
         {/* Toast Notification */}
         {toast && (
-          <div className={`fixed bottom-8 right-8 z-50 p-5 rounded-xl shadow-xl border transition-all duration-300 ${
+          <div className={`fixed bottom-8 right-8 z-50 p-5 rounded-xl shadow-xl border-2 transition-all duration-300 animate-fadeIn ${
             toast.type === 'success' 
               ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300'
               : toast.type === 'error'
@@ -329,7 +329,7 @@ export default function Clients() {
               {toast.undoAction && (
                 <button 
                   onClick={toast.undoAction}
-                  className="ml-4 flex items-center gap-2 bg-white dark:bg-gray-700 px-4 py-2 rounded-lg text-base font-medium hover:bg-gray-100 dark:hover:bg-gray-600 transition-all duration-200 shadow-sm hover:shadow hover:scale-105"
+                  className="ml-4 flex items-center gap-2 bg-blue-500 dark:bg-blue-600 text-white px-5 py-2 rounded-lg text-base font-bold hover:bg-blue-600 dark:hover:bg-blue-700 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105"
                 >
                   <Undo className="w-5 h-5" />
                   UNDO

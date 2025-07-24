@@ -110,6 +110,11 @@ export default function Clients() {
       // Store client data before deleting - make a deep copy to ensure all data is preserved
       const clientCopy = JSON.parse(JSON.stringify(client));
       console.log("Client backup created:", clientCopy);
+      
+      // Add to deletion history (most recent at the beginning)
+      setDeletedClientsHistory(prev => [clientCopy, ...prev.slice(0, 9)]);
+      
+      // For backward compatibility
       setDeletedClient(clientCopy);
       
       // Delete the client
@@ -141,12 +146,15 @@ export default function Clients() {
           // Feedback visuel du bouton
           document.querySelector('.toast-undo-button')?.classList.add('bg-green-600');
           
-          // Vérifier qu'on a bien les données du client
-          if (!deletedClient) {
-            console.error("Erreur: Pas de client à restaurer");
+          // Get the most recently deleted client from history
+          const mostRecentlyDeletedClient = deletedClientsHistory.length > 0 ? deletedClientsHistory[0] : deletedClient;
+          
+          // Check if we have a client to restore
+          if (!mostRecentlyDeletedClient) {
+            console.error("Error: No client available to restore");
             setToast({
               type: 'error',
-              message: 'Impossible de restaurer le client'
+              message: 'Unable to restore client: No recently deleted clients found'
             });
             return;
           }

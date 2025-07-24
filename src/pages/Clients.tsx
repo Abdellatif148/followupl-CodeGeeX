@@ -26,19 +26,36 @@ export default function Clients() {
   const [toast, setToast] = useState<{
     type: 'success' | 'error' | 'info'
     message: string
+    undoAction?: () => void
   } | null>(null)
+  const [deletedClient, setDeletedClient] = useState<Client | null>(null)
+  const undoTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     loadClients()
   }, [])
 
-  // Auto-hide toast after 3 seconds
+  // Auto-hide toast after 6 seconds for delete actions with undo, 3 seconds for others
   useEffect(() => {
     if (toast) {
-      const timer = setTimeout(() => setToast(null), 3000)
-      return () => clearTimeout(timer)
+      const duration = toast.undoAction ? 6000 : 3000
+      const timer = setTimeout(() => {
+        setToast(null)
+        // If this was a delete toast that timed out, clear the deletedClient state
+        if (toast.undoAction && deletedClient) {
+          setDeletedClient(null)
+        }
+      }, duration)
+      
+      undoTimerRef.current = timer
+      return () => {
+        if (undoTimerRef.current) {
+          clearTimeout(undoTimerRef.current)
+          undoTimerRef.current = null
+        }
+      }
     }
-  }, [toast])
+  }, [toast, deletedClient])
 
   const loadClients = async () => {
     try {
@@ -84,26 +101,76 @@ export default function Clients() {
   }
 
   const handleDeleteClient = async (client: Client) => {
-    if (window.confirm(`Are you sure you want to delete ${client.name}? This action cannot be undone.`)) {
-      try {
-        await clientsApi.delete(client.id)
-        trackClientAction('delete', {
-          client_id: client.id,
-          had_company: !!client.company,
-          tags_count: client.tags?.length || 0
-        })
-        setToast({
-          type: 'success',
-          message: 'Client deleted ❌'
-        })
-        loadClients()
-      } catch (error) {
-        console.error('Error deleting client:', error)
-        setToast({
-          type: 'error',
-          message: 'Failed to delete client. Please try again.'
-        })
-      }
+    try {
+      // Store client data before deleting
+      setDeletedClient({...client})
+      
+      // Delete the client
+      await clientsApi.delete(client.id)
+      
+      // Track deletion action
+      trackClientAction('delete', {
+        client_id: client.id,
+        had_platform_profile: !!client.platform_profile,
+        tags_count: client.tags?.length || 0
+      })
+      
+      // Update UI immediately
+      setClients(prevClients => prevClients.filter(c => c.id !== client.id))
+      
+      // Show toast with undo option
+      setToast({
+        type: 'success',
+        message: `Client "${client.name}" deleted`,
+        undoAction: handleUndoDelete
+      })
+      
+    } catch (error) {
+      console.error('Error deleting client:', error)
+      setToast({
+        type: 'error',
+        message: 'Failed to delete client. Please try again.'
+      })
+      // Clear backup if deletion failed
+      setDeletedClient(null)
+    }
+  }
+  
+  // Function to handle undo delete action
+  const handleUndoDelete = async () => {
+    // Cancel the timer
+    if (undoTimerRef.current) {
+      clearTimeout(undoTimerRef.current)
+      undoTimerRef.current = null
+    }
+    
+    if (!deletedClient) return
+    
+    try {
+      // Re-create the client from our backup
+      await clientsApi.create({
+        ...deletedClient,
+        id: deletedClient.id // Ensure ID is preserved
+      })
+      
+      // Reload clients to show the restored client
+      await loadClients()
+      
+      // Show success message
+      setToast({
+        type: 'success',
+        message: `Client "${deletedClient.name}" restored`
+      })
+      
+      // Clear the backup
+      setDeletedClient(null)
+      
+    } catch (error) {
+      console.error('Error restoring client:', error)
+      setToast({
+        type: 'error',
+        message: 'Failed to restore client. Please try again.'
+      })
     }
   }
 

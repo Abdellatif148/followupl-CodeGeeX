@@ -162,6 +162,9 @@ export default function Clients() {
           // Remove the client from the history
           setDeletedClientsHistory(prev => prev.filter(c => c.id !== clientToRestore.id));
           
+          // Clear the deletedClient state
+          setDeletedClient(null);
+          
           try {
             // Show loading toast
             setToast({

@@ -102,27 +102,32 @@ export default function Clients() {
 
   const handleDeleteClient = async (client: Client) => {
     try {
+      console.log("Deleting client:", client.name);
+      
       // Store client data before deleting
-      setDeletedClient({...client})
+      setDeletedClient({...client});
       
       // Delete the client
-      await clientsApi.delete(client.id)
+      await clientsApi.delete(client.id);
       
       // Track deletion action
       trackClientAction('delete', {
         client_id: client.id,
-        had_platform_profile: !!client.platform_profile,
+        had_company: !!client.company,
         tags_count: client.tags?.length || 0
-      })
+      });
       
       // Update UI immediately
-      setClients(prevClients => prevClients.filter(c => c.id !== client.id))
+      setClients(prevClients => prevClients.filter(c => c.id !== client.id));
       
       // Show toast with undo option
       setToast({
         type: 'success',
         message: `Client "${client.name}" deleted`,
-        undoAction: handleUndoDelete
+        undoAction: () => {
+          console.log("Undo button clicked");
+          handleUndoDelete();
+        }
       })
       
     } catch (error) {

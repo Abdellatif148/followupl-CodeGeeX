@@ -3,7 +3,7 @@ import { User, Mail, Phone, Building, FileText, Tag, Loader2, CheckCircle, Alert
 import { clientsApi } from '../lib/database'
 import { supabase } from '../lib/supabase'
 import { useBusinessAnalytics } from '../hooks/useAnalytics'
-import type { Client } from '../types/database'
+import type { Client, ClientInsert } from '../types/database'
 
 interface ClientFormProps {
   onSuccess?: () => void
@@ -99,7 +99,7 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
         .map(tag => tag.trim())
         .filter(tag => tag.length > 0)
 
-      const clientData = {
+      const clientData: ClientInsert = {
         user_id: user.id,
         name: formData.name.trim(),
         email: formData.email.trim() || null,
@@ -107,8 +107,12 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
         company: formData.company.trim() || null,
         notes: formData.project.trim() || null,
         tags: tagsArray,
-        platform: 'direct' as const,
-        status: formData.status as 'active' | 'inactive' | 'archived'
+        platform: 'direct',
+        status: formData.status as 'active' | 'inactive' | 'archived',
+        total_projects: 0,
+        total_earned: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       }
 
       if (editingClient) {
@@ -160,11 +164,12 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
         onSuccess?.()
       }, editingClient ? 100 : 1500) // Immediate for edits, delay for new clients
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving client:', error)
+      const errorMessage = error?.message || `Failed to ${editingClient ? 'update' : 'add'} client. Please try again.`
       setNotification({
         type: 'error',
-        message: `Failed to ${editingClient ? 'update' : 'add'} client. Please try again.`
+        message: errorMessage
       })
     } finally {
       setIsSubmitting(false)

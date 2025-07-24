@@ -126,16 +126,70 @@ export default function Clients() {
       setToast({
         type: 'success',
         message: `Client "${client.name}" deleted`,
-        undoAction: () => {
-          console.log("UNDO button clicked - immediate reaction");
-          // Feedback visuel immédiat pour montrer que le bouton a été cliqué
-          document.querySelector('.toast-undo-button')?.classList.add('bg-green-600');
-          // Ajouter le client à l'interface avant même l'appel à l'API
-          if (deletedClient) {
-            setClients(prev => [deletedClient, ...prev]);
+        undoAction: async () => {
+          console.log("UNDO button clicked - executing one-step restoration");
+          
+          // Annuler le timer si existant
+          if (undoTimerRef.current) {
+            clearTimeout(undoTimerRef.current);
+            undoTimerRef.current = null;
           }
-          // Appeler la fonction de restauration
-          handleUndoDelete();
+          
+          // Feedback visuel du bouton
+          document.querySelector('.toast-undo-button')?.classList.add('bg-green-600');
+          
+          // Vérifier qu'on a bien les données du client
+          if (!deletedClient) {
+            console.error("Erreur: Pas de client à restaurer");
+            setToast({
+              type: 'error',
+              message: 'Impossible de restaurer le client'
+            });
+            return;
+          }
+          
+          try {
+            // Montrer un toast de chargement
+            setToast({
+              type: 'info',
+              message: `Restauration de "${deletedClient.name}" en cours...`
+            });
+            
+            // Créer directement un client simple
+            const newClient = {
+              name: deletedClient.name,
+              email: deletedClient.email || null,
+              phone: deletedClient.phone || null,
+              company: deletedClient.company || null,
+              user_id: user.id,
+              platform: deletedClient.platform || 'direct',
+              status: 'active'
+            };
+            
+            // Ajouter immédiatement dans l'UI pour feedback instantané
+            setClients(prev => [deletedClient, ...prev]);
+            
+            // Créer le client dans la base de données
+            await clientsApi.create(newClient);
+            
+            // Recharger tous les clients pour être sûr d'avoir des données cohérentes
+            await loadClients();
+            
+            // Toast de succès
+            setToast({
+              type: 'success',
+              message: `Client "${deletedClient.name}" restauré avec succès`
+            });
+            
+            // Nettoyer l'état
+            setDeletedClient(null);
+          } catch (error) {
+            console.error("Erreur de restauration:", error);
+            setToast({
+              type: 'error',
+              message: 'Erreur lors de la restauration du client'
+            });
+          }
         }
       })
       

@@ -1,3 +1,6 @@
+-- Enable the moddatetime extension if not already enabled
+CREATE EXTENSION IF NOT EXISTS moddatetime SCHEMA extensions;
+
 -- Create expenses table
 CREATE TABLE IF NOT EXISTS expenses (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -18,6 +21,12 @@ CREATE TABLE IF NOT EXISTS expenses (
   updated_at timestamptz DEFAULT now()
 );
 
+-- Add trigger for updated_at using Supabase's moddatetime extension
+CREATE TRIGGER handle_updated_at
+BEFORE UPDATE ON expenses
+FOR EACH ROW
+EXECUTE FUNCTION extensions.moddatetime('updated_at');
+
 -- Enable Row Level Security
 ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 
@@ -37,12 +46,6 @@ CREATE POLICY "Users can update their own expenses"
 CREATE POLICY "Users can delete their own expenses"
   ON expenses FOR DELETE
   USING (user_id = auth.uid());
-
--- Add trigger for updated_at
-CREATE TRIGGER set_updated_at
-BEFORE UPDATE ON expenses
-FOR EACH ROW
-EXECUTE FUNCTION public.set_updated_at();
 
 -- Add expense-related functions
 CREATE OR REPLACE FUNCTION get_expense_totals_by_category(

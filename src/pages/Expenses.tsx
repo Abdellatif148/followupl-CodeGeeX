@@ -7,7 +7,7 @@ import {
   BarChart2
 } from 'lucide-react'
 import Layout from '../components/Layout'
-import { expensesApi } from '../lib/database'
+import { expensesApi } from '../lib/expensesApi'
 import { supabase } from '../lib/supabase'
 import { useCurrency } from '../hooks/useCurrency'
 import { Expense } from '../types/database'
@@ -55,7 +55,7 @@ export default function Expenses() {
         
         if (user) {
           const expensesData = await expensesApi.getAll(user.id)
-          setExpenses(expensesData)
+          setExpenses(Array.isArray(expensesData) ? expensesData : [])
         }
       } catch (error) {
         console.error('Error loading expenses:', error)
@@ -163,13 +163,14 @@ export default function Expenses() {
   // Apply filters and search
   const filteredExpenses = expenses
     .filter(expense => {
+      if (!expense) return false; // Skip any undefined or null expenses
       // Search query
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
-        const matchesTitle = expense.title.toLowerCase().includes(query)
+        const matchesTitle = expense.title?.toLowerCase().includes(query) || false
         const matchesDescription = expense.description?.toLowerCase().includes(query) || false
-        const matchesCategory = expense.category.toLowerCase().includes(query)
-        const matchesClient = expense.clients?.name.toLowerCase().includes(query) || false
+        const matchesCategory = expense.category?.toLowerCase().includes(query) || false
+        const matchesClient = expense.clients?.name?.toLowerCase().includes(query) || false
         
         if (!(matchesTitle || matchesDescription || matchesCategory || matchesClient)) {
           return false
@@ -212,6 +213,7 @@ export default function Expenses() {
       return true
     })
     .sort((a, b) => {
+      if (!a || !b) return 0; // Handle potential undefined or null values
       if (sortField === 'amount') {
         return sortDirection === 'asc' ? a.amount - b.amount : b.amount - a.amount
       } else if (sortField === 'expense_date') {

@@ -249,6 +249,7 @@ export default function Expenses() {
   }
 
   const getCategoryLabel = (categoryValue: string) => {
+    if (!categoryValue) return '';
     const category = categories.find(cat => cat.value === categoryValue)
     return category ? category.label : categoryValue
   }

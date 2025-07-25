@@ -1,10 +1,11 @@
 import { supabase } from './supabase'
-import type { 
+import type {
   Client, ClientInsert, ClientUpdate,
   Reminder, ReminderInsert, ReminderUpdate,
   Invoice, InvoiceInsert, InvoiceUpdate,
   Profile, ProfileInsert, ProfileUpdate,
-  Notification, NotificationInsert, NotificationUpdate
+  Notification, NotificationInsert, NotificationUpdate,
+  Expense, ExpenseInsert, ExpenseUpdate
 } from '../types/database'
 
 // Client operations
@@ -353,25 +354,202 @@ export const notificationsApi = {
   }
 }
 
+// Expense operations
+export const expensesApi = {
+  async getAll(userId: string) {
+    const { data, error } = await supabase
+      .from('expenses')
+      .select(`
+        *,
+        clients (
+          id,
+          name,
+          platform
+        )
+      `)
+      .eq('user_id', userId)
+      .order('expense_date', { ascending: false })
+    
+    if (error) throw error
+    return data as Expense[]
+  },
+
+  async getById(id: string) {
+    const { data, error } = await supabase
+      .from('expenses')
+      .select(`
+        *,
+        clients (
+          id,
+          name,
+          platform
+        )
+      `)
+      .eq('id', id)
+      .single()
+    
+    if (error) throw error
+    return data as Expense
+  },
+
+  async create(expense: ExpenseInsert) {
+    const { data, error } = await supabase
+      .from('expenses')
+      .insert(expense)
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data as Expense
+  },
+
+  async update(id: string, updates: ExpenseUpdate) {
+    const { data, error } = await supabase
+      .from('expenses')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data as Expense
+  },
+
+  async delete(id: string) {
+    const { error } = await supabase
+      .from('expenses')
+      .delete()
+      .eq('id', id)
+    
+    if (error) throw error
+  },
+
+  async getByCategory(userId: string, startDate: string, endDate: string) {
+    const { data, error } = await supabase
+      .rpc('get_expense_totals_by_category', {
+        user_id_param: userId,
+        start_date_param: startDate,
+        end_date_param: endDate
+      })
+    
+    if (error) throw error
+    return data
+  },
+
+  async getByClient(userId: string, startDate: string, endDate: string) {
+    const { data, error } = await supabase
+      .rpc('get_expense_totals_by_client', {
+        user_id_param: userId,
+        start_date_param: startDate,
+        end_date_param: endDate
+      })
+    
+    if (error) throw error
+    return data
+  },
+
+  async getMonthlyTotals(userId: string, year: number) {
+    const { data, error } = await supabase
+      .rpc('get_monthly_expense_totals', {
+        user_id_param: userId,
+        year_param: year
+      })
+    
+    if (error) throw error
+    return data
+  },
+
+  async search(userId: string, query: string) {
+    const { data, error } = await supabase
+      .from('expenses')
+      .select(`
+        *,
+        clients (
+          id,
+          name,
+          platform
+        )
+      `)
+      .eq('user_id', userId)
+      .or(`title.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%`)
+      .order('expense_date', { ascending: false })
+    
+    if (error) throw error
+    return data as Expense[]
+  },
+
+  async getTaxDeductible(userId: string, year: number) {
+    const startDate = `${year}-01-01`
+    const endDate = `${year}-12-31`
+    
+    const { data, error } = await supabase
+      .from('expenses')
+      .select(`
+        *,
+        clients (
+          id,
+          name,
+          platform
+        )
+      `)
+      .eq('user_id', userId)
+      .eq('tax_deductible', true)
+      .gte('expense_date', startDate)
+      .lte('expense_date', endDate)
+      .order('expense_date', { ascending: false })
+    
+    if (error) throw error
+    return data as Expense[]
+  }
+}
+
 // Dashboard stats
 export const dashboardApi = {
   async getStats(userId: string) {
-    const [clients, reminders, invoices] = await Promise.all([
+    const [clients, reminders, invoices, expenses] = await Promise.all([
       clientsApi.getAll(userId),
       remindersApi.getUpcoming(userId),
-      invoicesApi.getAll(userId)
+      invoicesApi.getAll(userId),
+      expensesApi.getAll(userId)
     ])
 
-    const activeClients = clients.filter(c => c.status === 'active').length
-    const pendingReminders = reminders.filter(r => r.status === 'pending').length
-    const pendingInvoices = invoices.filter(i => ['sent', 'pending'].includes(i.status))
-    const overdueInvoices = invoices.filter(i => {
+    const activeClients = clients.filter((c: Client) => c.status === 'active').length
+    const pendingReminders = reminders.filter((r: Reminder) => r.status === 'pending').length
+    const pendingInvoices = invoices.filter((i: Invoice) => ['sent', 'pending'].includes(i.status))
+    const overdueInvoices = invoices.filter((i: Invoice) => {
       const today = new Date().toISOString().split('T')[0]
       return ['sent', 'pending'].includes(i.status) && i.due_date < today
     })
 
-    const totalPendingAmount = pendingInvoices.reduce((sum, inv) => sum + inv.amount, 0)
-    const totalOverdueAmount = overdueInvoices.reduce((sum, inv) => sum + inv.amount, 0)
+    const totalPendingAmount = pendingInvoices.reduce((sum: number, inv: Invoice) => sum + inv.amount, 0)
+    const totalOverdueAmount = overdueInvoices.reduce((sum: number, inv: Invoice) => sum + inv.amount, 0)
+    
+    // Calculate expense stats
+    const currentDate = new Date()
+    const currentMonth = currentDate.getMonth()
+    const currentYear = currentDate.getFullYear()
+    
+    const firstDayOfMonth = new Date(currentYear, currentMonth, 1).toISOString()
+    const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).toISOString()
+    
+    const currentMonthExpenses = expenses.filter((e: Expense) =>
+      e.expense_date >= firstDayOfMonth && e.expense_date <= lastDayOfMonth
+    )
+    
+    const totalMonthlyExpenses = currentMonthExpenses.reduce((sum: number, exp: Expense) => sum + exp.amount, 0)
+    
+    // Get top expense category
+    const categoryTotals: Record<string, number> = {}
+    currentMonthExpenses.forEach((expense: Expense) => {
+      if (!categoryTotals[expense.category]) {
+        categoryTotals[expense.category] = 0
+      }
+      categoryTotals[expense.category] += expense.amount
+    })
+    
+    const topExpenseCategory = Object.entries(categoryTotals)
+      .sort(([, a], [, b]) => b - a)
+      .map(([category, amount]) => ({ category, amount }))[0] || null
 
     return {
       activeClients,
@@ -382,7 +560,10 @@ export const dashboardApi = {
       totalOverdueAmount,
       recentClients: clients.slice(0, 5),
       upcomingReminders: reminders.slice(0, 5),
-      recentInvoices: invoices.slice(0, 5)
+      recentInvoices: invoices.slice(0, 5),
+      totalMonthlyExpenses,
+      topExpenseCategory,
+      recentExpenses: expenses.slice(0, 5)
     }
   }
 }

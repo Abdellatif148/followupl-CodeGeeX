@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { 
+import {
   Home, Users, Bell, FileText, Settings, LogOut, Menu, X,
-  User, Search, Plus
+  User, Search, Plus, DollarSign
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import DarkModeToggle from './DarkModeToggle'
@@ -34,6 +34,7 @@ export default function Layout({ children }: LayoutProps) {
     { name: t('navigation.clients'), href: '/clients', icon: Users },
     { name: t('navigation.reminders'), href: '/reminders', icon: Bell },
     { name: t('navigation.invoices'), href: '/invoices', icon: FileText },
+    { name: t('navigation.expenses'), href: '/expenses', icon: DollarSign },
     { name: t('navigation.settings'), href: '/settings', icon: Settings },
   ]
 
@@ -183,7 +184,7 @@ export default function Layout({ children }: LayoutProps) {
                   className="flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200 w-64"
                 >
                   <Search className="w-5 h-5" />
-                  <span>Search clients, invoices, reminders...</span>
+                  <span>Search clients, invoices, reminders, expenses...</span>
                 </button>
               </div>
             </div>

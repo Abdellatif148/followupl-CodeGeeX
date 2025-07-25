@@ -11,6 +11,10 @@ import Clients from './pages/Clients'
 import AddClient from './pages/AddClient'
 import Reminders from './pages/Reminders'
 import Invoices from './pages/Invoices'
+import Expenses from './pages/Expenses'
+import AddExpense from './pages/AddExpense'
+import EditExpense from './pages/EditExpense'
+import ExpenseReports from './pages/ExpenseReports'
 import Settings from './pages/Settings'
 import TermsOfService from './pages/TermsOfService'
 import PrivacyPolicy from './pages/PrivacyPolicy'
@@ -67,6 +71,26 @@ function App() {
           <Route path="/invoices" element={
             <ProtectedRoute>
               <Invoices />
+            </ProtectedRoute>
+          } />
+          <Route path="/expenses" element={
+            <ProtectedRoute>
+              <Expenses />
+            </ProtectedRoute>
+          } />
+          <Route path="/expenses/add" element={
+            <ProtectedRoute>
+              <AddExpense />
+            </ProtectedRoute>
+          } />
+          <Route path="/expenses/edit/:id" element={
+            <ProtectedRoute>
+              <EditExpense />
+            </ProtectedRoute>
+          } />
+          <Route path="/expenses/reports" element={
+            <ProtectedRoute>
+              <ExpenseReports />
             </ProtectedRoute>
           } />
           <Route path="/settings" element={

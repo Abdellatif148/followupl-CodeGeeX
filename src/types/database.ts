@@ -1,6 +1,62 @@
 export interface Database {
   public: {
     Tables: {
+      expenses: {
+        Row: {
+          id: string
+          user_id: string
+          client_id: string | null
+          title: string
+          description: string | null
+          amount: number
+          currency: string
+          category: string
+          subcategory: string | null
+          expense_date: string
+          payment_method: string | null
+          tax_deductible: boolean
+          status: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
+          tags: string[]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          client_id?: string | null
+          title: string
+          description?: string | null
+          amount: number
+          currency: string
+          category: string
+          subcategory?: string | null
+          expense_date: string
+          payment_method?: string | null
+          tax_deductible?: boolean
+          status?: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
+          tags?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          client_id?: string | null
+          title?: string
+          description?: string | null
+          amount?: number
+          currency?: string
+          category?: string
+          subcategory?: string | null
+          expense_date?: string
+          payment_method?: string | null
+          tax_deductible?: boolean
+          status?: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
+          tags?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+      }
       profiles: {
         Row: {
           id: string
@@ -220,7 +276,7 @@ export interface Database {
           is_read: boolean
           action_url: string | null
           related_id: string | null
-          related_type: 'client' | 'reminder' | 'invoice' | null
+          related_type: 'client' | 'reminder' | 'invoice' | 'expense' | null
           created_at: string
         }
         Insert: {
@@ -232,7 +288,7 @@ export interface Database {
           is_read?: boolean
           action_url?: string | null
           related_id?: string | null
-          related_type?: 'client' | 'reminder' | 'invoice' | null
+          related_type?: 'client' | 'reminder' | 'invoice' | 'expense' | null
           created_at?: string
         }
         Update: {
@@ -244,7 +300,7 @@ export interface Database {
           is_read?: boolean
           action_url?: string | null
           related_id?: string | null
-          related_type?: 'client' | 'reminder' | 'invoice' | null
+          related_type?: 'client' | 'reminder' | 'invoice' | 'expense' | null
           created_at?: string
         }
       }
@@ -271,3 +327,13 @@ export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
 export type Notification = Database['public']['Tables']['notifications']['Row']
 export type NotificationInsert = Database['public']['Tables']['notifications']['Insert']
 export type NotificationUpdate = Database['public']['Tables']['notifications']['Update']
+
+export type Expense = Database['public']['Tables']['expenses']['Row'] & {
+  clients?: {
+    id: string;
+    name: string;
+    platform: string;
+  }
+}
+export type ExpenseInsert = Database['public']['Tables']['expenses']['Insert']
+export type ExpenseUpdate = Database['public']['Tables']['expenses']['Update']

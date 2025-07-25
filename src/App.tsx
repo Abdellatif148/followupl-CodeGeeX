@@ -21,55 +21,62 @@ import { SEO } from './components/SEO'
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/terms" element={<TermsOfService />} />
-        <Route path="/privacy" element={<PrivacyPolicy />} />
-        <Route path="/support" element={<Support />} />
+    <HelmetProvider>
+      {/* Base SEO - will be overridden by page-specific SEO */}
+      <SEO />
+      {/* Global structured data for the site */}
+      <StructuredData />
+
+      <Router>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/terms" element={<TermsOfService />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/support" element={<Support />} />
         
         {/* Protected Routes */}
-        <Route path="/language-selection" element={
-          <ProtectedRoute>
-            <LanguageSelection />
-          </ProtectedRoute>
-        } />
-        <Route path="/dashboard" element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } />
-        <Route path="/clients" element={
-          <ProtectedRoute>
-            <Clients />
-          </ProtectedRoute>
-        } />
-        <Route path="/clients/add" element={
-          <ProtectedRoute>
-            <AddClient />
-          </ProtectedRoute>
-        } />
-        <Route path="/reminders" element={
-          <ProtectedRoute>
-            <Reminders />
-          </ProtectedRoute>
-        } />
-        <Route path="/invoices" element={
-          <ProtectedRoute>
-            <Invoices />
-          </ProtectedRoute>
-        } />
-        <Route path="/settings" element={
-          <ProtectedRoute>
-            <Settings />
-          </ProtectedRoute>
-        } />
-      </Routes>
-    </Router>
+          <Route path="/language-selection" element={
+            <ProtectedRoute>
+              <LanguageSelection />
+            </ProtectedRoute>
+          } />
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/clients" element={
+            <ProtectedRoute>
+              <Clients />
+            </ProtectedRoute>
+          } />
+          <Route path="/clients/add" element={
+            <ProtectedRoute>
+              <AddClient />
+            </ProtectedRoute>
+          } />
+          <Route path="/reminders" element={
+            <ProtectedRoute>
+              <Reminders />
+            </ProtectedRoute>
+          } />
+          <Route path="/invoices" element={
+            <ProtectedRoute>
+              <Invoices />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          } />
+        </Routes>
+      </Router>
+    </HelmetProvider>
   )
 }
 

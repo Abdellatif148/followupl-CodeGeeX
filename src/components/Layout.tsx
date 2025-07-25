@@ -34,7 +34,7 @@ export default function Layout({ children }: LayoutProps) {
     { name: t('navigation.clients'), href: '/clients', icon: Users },
     { name: t('navigation.reminders'), href: '/reminders', icon: Bell },
     { name: t('navigation.invoices'), href: '/invoices', icon: FileText },
-    { name: t('navigation.expenses'), href: '/expenses', icon: DollarSign },
+    { name: t('expense', 'Expenses'), href: '/expenses', icon: DollarSign },
     { name: t('navigation.settings'), href: '/settings', icon: Settings },
   ]
 

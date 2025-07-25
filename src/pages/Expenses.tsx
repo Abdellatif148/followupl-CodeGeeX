@@ -188,11 +188,11 @@ export default function Expenses() {
       }
       
       // Date range filter
-      if (filters.startDate && new Date(expense.expense_date) < new Date(filters.startDate)) {
+      if (filters.startDate && expense.expense_date && new Date(expense.expense_date) < new Date(filters.startDate)) {
         return false
       }
       
-      if (filters.endDate && new Date(expense.expense_date) > new Date(filters.endDate)) {
+      if (filters.endDate && expense.expense_date && new Date(expense.expense_date) > new Date(filters.endDate)) {
         return false
       }
       
@@ -230,17 +230,22 @@ export default function Expenses() {
     })
 
   // Calculate totals
-  const totalAmount = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0)
+  const totalAmount = filteredExpenses.reduce((sum, expense) => sum + (expense?.amount || 0), 0)
   const totalTaxDeductible = filteredExpenses
-    .filter(expense => expense.tax_deductible)
-    .reduce((sum, expense) => sum + expense.amount, 0)
+    .filter(expense => expense?.tax_deductible)
+    .reduce((sum, expense) => sum + (expense?.amount || 0), 0)
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    })
+    if (!dateString) return '';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      })
+    } catch (e) {
+      return dateString;
+    }
   }
 
   const getCategoryLabel = (categoryValue: string) => {

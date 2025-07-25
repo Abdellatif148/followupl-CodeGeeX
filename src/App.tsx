@@ -1,5 +1,6 @@
 import React from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { HelmetProvider } from 'react-helmet-async'
 import LandingPage from './pages/LandingPage'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
@@ -15,6 +16,8 @@ import TermsOfService from './pages/TermsOfService'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import Support from './pages/Support'
 import ProtectedRoute from './components/ProtectedRoute'
+import { StructuredData } from './components/StructuredData'
+import { SEO } from './components/SEO'
 
 function App() {
   return (

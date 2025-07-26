@@ -33,6 +33,10 @@ export function useCurrency() {
     return currencyUtils.getCurrencySymbol(customCurrency || currency)
   }
 
+  const getAvailableCurrencies = () => {
+    return currencyUtils.getAvailableCurrencies()
+  }
+
   const updateCurrency = (newCurrency: string) => {
     setCurrency(newCurrency)
   }
@@ -42,6 +46,7 @@ export function useCurrency() {
     loading,
     formatCurrency,
     getCurrencySymbol,
+    getAvailableCurrencies,
     updateCurrency,
     refreshCurrency: loadUserCurrency
   }

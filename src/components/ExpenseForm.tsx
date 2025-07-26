@@ -4,6 +4,7 @@ import { expensesApi, clientsApi } from '../lib/database'
 import { supabase } from '../lib/supabase'
 import { useCurrency } from '../hooks/useCurrency'
 import { Expense, Client } from '../types/database'
+import { Loader2, AlertCircle, CheckCircle } from 'lucide-react'
 
 interface ExpenseFormProps {
   expenseId?: string
@@ -13,9 +14,13 @@ interface ExpenseFormProps {
 
 export default function ExpenseForm({ expenseId, onSuccess, onCancel }: ExpenseFormProps) {
   const { t } = useTranslation()
-  const { formatCurrency, getAvailableCurrencies } = useCurrency()
+  const { getAvailableCurrencies } = useCurrency()
   const [loading, setLoading] = useState(false)
   const [clients, setClients] = useState<Client[]>([])
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error'
+    message: string
+  } | null>(null)
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -81,14 +86,27 @@ export default function ExpenseForm({ expenseId, onSuccess, onCancel }: ExpenseF
           if (expenseId) {
             const expenseData = await expensesApi.getById(expenseId)
             setFormData({
-              ...expenseData,
+              title: expenseData.title,
+              description: expenseData.description || '',
+              amount: expenseData.amount,
+              currency: expenseData.currency,
+              category: expenseData.category,
+              subcategory: expenseData.subcategory || '',
               expense_date: new Date(expenseData.expense_date).toISOString().split('T')[0],
+              client_id: expenseData.client_id,
+              payment_method: expenseData.payment_method || '',
+              tax_deductible: expenseData.tax_deductible,
+              status: expenseData.status,
               tags: expenseData.tags || []
             })
           }
         }
       } catch (error) {
         console.error('Error loading data:', error)
+        setNotification({
+          type: 'error',
+          message: 'Failed to load data. Please try again.'
+        })
       } finally {
         setLoading(false)
       }
@@ -128,10 +146,42 @@ export default function ExpenseForm({ expenseId, onSuccess, onCancel }: ExpenseF
     }))
   }
 
+  const validateForm = () => {
+    if (!formData.title.trim()) {
+      setNotification({
+        type: 'error',
+        message: 'Title is required'
+      })
+      return false
+    }
+
+    if (!formData.category) {
+      setNotification({
+        type: 'error',
+        message: 'Category is required'
+      })
+      return false
+    }
+
+    if (formData.amount <= 0) {
+      setNotification({
+        type: 'error',
+        message: 'Amount must be greater than 0'
+      })
+      return false
+    }
+
+    return true
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!validateForm()) return
+
     try {
       setLoading(true)
+      setNotification(null)
       
       // Get user
       const { data: { user } } = await supabase.auth.getUser()
@@ -146,14 +196,28 @@ export default function ExpenseForm({ expenseId, onSuccess, onCancel }: ExpenseF
         
         if (expenseId) {
           await expensesApi.update(expenseId, expenseData)
+          setNotification({
+            type: 'success',
+            message: 'Expense updated successfully!'
+          })
         } else {
           await expensesApi.create(expenseData)
+          setNotification({
+            type: 'success',
+            message: 'Expense created successfully!'
+          })
         }
         
-        onSuccess()
+        setTimeout(() => {
+          onSuccess()
+        }, 1500)
       }
     } catch (error) {
       console.error('Error saving expense:', error)
+      setNotification({
+        type: 'error',
+        message: 'Failed to save expense. Please try again.'
+      })
     } finally {
       setLoading(false)
     }
@@ -173,232 +237,259 @@ export default function ExpenseForm({ expenseId, onSuccess, onCancel }: ExpenseF
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Title */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {t('expenses.form.title', 'Title')}*
-          </label>
-          <input
-            type="text"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-          />
+    <div className="space-y-6">
+      {notification && (
+        <div className={`p-4 rounded-lg flex items-start gap-3 ${
+          notification.type === 'success' 
+            ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+            : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+        }`}>
+          {notification.type === 'success' ? (
+            <CheckCircle className="w-5 h-5 text-green-500 dark:text-green-400 flex-shrink-0 mt-0.5" />
+          ) : (
+            <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
+          )}
+          <p className={`text-sm ${
+            notification.type === 'success' 
+              ? 'text-green-700 dark:text-green-300'
+              : 'text-red-700 dark:text-red-300'
+          }`}>
+            {notification.message}
+          </p>
         </div>
-        
-        {/* Amount and Currency */}
-        <div className="flex space-x-4">
-          <div className="flex-1">
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Title */}
+          <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {t('expenses.form.amount', 'Amount')}*
+              {t('expenses.form.title', 'Title')}*
             </label>
             <input
-              type="number"
-              name="amount"
-              value={formData.amount}
+              type="text"
+              name="title"
+              value={formData.title}
               onChange={handleChange}
               required
-              min="0"
-              step="0.01"
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              placeholder="Enter expense title"
             />
           </div>
-          <div className="w-1/3">
+          
+          {/* Amount and Currency */}
+          <div className="flex space-x-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t('expenses.form.amount', 'Amount')}*
+              </label>
+              <input
+                type="number"
+                name="amount"
+                value={formData.amount}
+                onChange={handleChange}
+                required
+                min="0"
+                step="0.01"
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
+            <div className="w-1/3">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                {t('expenses.form.currency', 'Currency')}
+              </label>
+              <select
+                name="currency"
+                value={formData.currency}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              >
+                {getAvailableCurrencies().map(currency => (
+                  <option key={currency.code} value={currency.code}>
+                    {currency.code} ({currency.symbol})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
+          {/* Category */}
+          <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {t('expenses.form.currency', 'Currency')}
+              {t('expenses.form.category', 'Category')}*
             </label>
             <select
-              name="currency"
-              value={formData.currency}
+              name="category"
+              value={formData.category}
               onChange={handleChange}
+              required
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
             >
-              {getAvailableCurrencies().map(currency => (
-                <option key={currency.code} value={currency.code}>
-                  {currency.code} ({currency.symbol})
+              <option value="">{t('expenses.form.selectCategory', 'Select a category')}</option>
+              {categories.map(category => (
+                <option key={category.value} value={category.value}>
+                  {category.label}
                 </option>
               ))}
             </select>
           </div>
+          
+          {/* Subcategory */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t('expenses.form.subcategory', 'Subcategory')}
+            </label>
+            <input
+              type="text"
+              name="subcategory"
+              value={formData.subcategory || ''}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              placeholder="Optional subcategory"
+            />
+          </div>
+          
+          {/* Date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t('expenses.form.date', 'Date')}*
+            </label>
+            <input
+              type="date"
+              name="expense_date"
+              value={formData.expense_date}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+          
+          {/* Client */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t('expenses.form.client', 'Client')}
+            </label>
+            <select
+              name="client_id"
+              value={formData.client_id || ''}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+            >
+              <option value="">{t('expenses.form.noClient', 'No client')}</option>
+              {clients.map(client => (
+                <option key={client.id} value={client.id}>
+                  {client.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Payment Method */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t('expenses.form.paymentMethod', 'Payment Method')}
+            </label>
+            <select
+              name="payment_method"
+              value={formData.payment_method || ''}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+            >
+              <option value="">{t('expenses.form.selectPaymentMethod', 'Select payment method')}</option>
+              {paymentMethods.map(method => (
+                <option key={method.value} value={method.value}>
+                  {method.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Status */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t('expenses.form.status', 'Status')}
+            </label>
+            <select
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+            >
+              {statusOptions.map(status => (
+                <option key={status.value} value={status.value}>
+                  {status.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Tags */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {t('expenses.form.tags', 'Tags')} <span className="text-xs text-gray-500">{t('expenses.form.tagsHint', '(comma separated)')}</span>
+            </label>
+            <input
+              type="text"
+              name="tags"
+              value={formData.tags.join(', ')}
+              onChange={handleTagsChange}
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              placeholder={t('expenses.form.tagsPlaceholder', 'e.g. project1, tax2025, client-reimbursable')}
+            />
+          </div>
+          
+          {/* Tax Deductible */}
+          <div className="flex items-center">
+            <input
+              type="checkbox"
+              id="tax_deductible"
+              name="tax_deductible"
+              checked={formData.tax_deductible}
+              onChange={handleChange}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label htmlFor="tax_deductible" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+              {t('expenses.form.taxDeductible', 'Tax Deductible')}
+            </label>
+          </div>
         </div>
         
-        {/* Category */}
+        {/* Description */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {t('expenses.form.category', 'Category')}*
+            {t('expenses.form.description', 'Description')}
           </label>
-          <select
-            name="category"
-            value={formData.category}
+          <textarea
+            name="description"
+            value={formData.description || ''}
             onChange={handleChange}
-            required
+            rows={3}
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-          >
-            <option value="">{t('expenses.form.selectCategory', 'Select a category')}</option>
-            {categories.map(category => (
-              <option key={category.value} value={category.value}>
-                {category.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        
-        {/* Subcategory */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {t('expenses.form.subcategory', 'Subcategory')}
-          </label>
-          <input
-            type="text"
-            name="subcategory"
-            value={formData.subcategory || ''}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+            placeholder="Optional description"
           />
         </div>
         
-        {/* Date */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {t('expenses.form.date', 'Date')}*
-          </label>
-          <input
-            type="date"
-            name="expense_date"
-            value={formData.expense_date}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-          />
-        </div>
-        
-        {/* Client */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {t('expenses.form.client', 'Client')}
-          </label>
-          <select
-            name="client_id"
-            value={formData.client_id || ''}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-          >
-            <option value="">{t('expenses.form.noClient', 'No client')}</option>
-            {clients.map(client => (
-              <option key={client.id} value={client.id}>
-                {client.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        
-        {/* Payment Method */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {t('expenses.form.paymentMethod', 'Payment Method')}
-          </label>
-          <select
-            name="payment_method"
-            value={formData.payment_method || ''}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-          >
-            <option value="">{t('expenses.form.selectPaymentMethod', 'Select payment method')}</option>
-            {paymentMethods.map(method => (
-              <option key={method.value} value={method.value}>
-                {method.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        
-        {/* Status */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {t('expenses.form.status', 'Status')}
-          </label>
-          <select
-            name="status"
-            value={formData.status}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-          >
-            {statusOptions.map(status => (
-              <option key={status.value} value={status.value}>
-                {status.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        
-        {/* Tags */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            {t('expenses.form.tags', 'Tags')} <span className="text-xs text-gray-500">{t('expenses.form.tagsHint', '(comma separated)')}</span>
-          </label>
-          <input
-            type="text"
-            name="tags"
-            value={formData.tags.join(', ')}
-            onChange={handleTagsChange}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-            placeholder={t('expenses.form.tagsPlaceholder', 'e.g. project1, tax2025, client-reimbursable')}
-          />
-        </div>
-        
-        {/* Tax Deductible */}
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="tax_deductible"
-            name="tax_deductible"
-            checked={formData.tax_deductible}
-            onChange={handleChange}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-          />
-          <label htmlFor="tax_deductible" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-            {t('expenses.form.taxDeductible', 'Tax Deductible')}
-          </label>
-        </div>
-      </div>
-      
-      {/* Description */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-          {t('expenses.form.description', 'Description')}
-        </label>
-        <textarea
-          name="description"
-          value={formData.description || ''}
-          onChange={handleChange}
-          rows={3}
-          className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-        />
-      </div>
-      
-      {/* Submit Button */}
-      <div className="flex justify-end space-x-4">
-        {onCancel && (
+        {/* Submit Button */}
+        <div className="flex justify-end space-x-4">
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
+            >
+              {t('common.cancel', 'Cancel')}
+            </button>
+          )}
           <button
-            type="button"
-            onClick={onCancel}
-            className="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
+            type="submit"
+            disabled={loading}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 flex items-center"
           >
-            {t('common.cancel', 'Cancel')}
+            {loading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+            {loading ? t('common.saving', 'Saving...') : (expenseId ? t('common.update', 'Update') : t('common.save', 'Save'))}
           </button>
-        )}
-        <button
-          type="submit"
-          disabled={loading}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50"
-        >
-          {loading ? t('common.saving', 'Saving...') : (expenseId ? t('common.update', 'Update') : t('common.save', 'Save'))}
-        </button>
-      </div>
-    </form>
+        </div>
+      </form>
+    </div>
   )
 }

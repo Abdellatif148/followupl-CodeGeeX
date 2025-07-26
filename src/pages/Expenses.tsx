@@ -7,7 +7,7 @@ import {
   BarChart2
 } from 'lucide-react'
 import Layout from '../components/Layout'
-import { expensesApi } from '../lib/expensesApi'
+import { expensesApi } from '../lib/database'
 import { supabase } from '../lib/supabase'
 import { useCurrency } from '../hooks/useCurrency'
 import { Expense } from '../types/database'
@@ -17,6 +17,7 @@ export default function Expenses() {
   const { formatCurrency } = useCurrency()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [user, setUser] = useState<any>(null)
   const [sortField, setSortField] = useState('expense_date')
   const [sortDirection, setSortDirection] = useState('desc')
@@ -50,6 +51,7 @@ export default function Expenses() {
     const loadExpenses = async () => {
       try {
         setLoading(true)
+        setError(null)
         const { data: { user } } = await supabase.auth.getUser()
         setUser(user)
         
@@ -59,6 +61,7 @@ export default function Expenses() {
         }
       } catch (error) {
         console.error('Error loading expenses:', error)
+        setError('Failed to load expenses. Please try again.')
       } finally {
         setLoading(false)
       }
@@ -113,57 +116,64 @@ export default function Expenses() {
         setExpenses(expenses.filter(expense => expense.id !== id))
       } catch (error) {
         console.error('Error deleting expense:', error)
+        alert('Failed to delete expense. Please try again.')
       }
     }
   }
 
   const exportCSV = () => {
-    const headers = [
-      'Title',
-      'Description',
-      'Amount',
-      'Currency',
-      'Category',
-      'Date',
-      'Client',
-      'Payment Method',
-      'Tax Deductible',
-      'Status'
-    ]
-    
-    const csvData = filteredExpenses.map(expense => [
-      expense.title,
-      expense.description || '',
-      expense.amount,
-      expense.currency,
-      expense.category,
-      new Date(expense.expense_date).toLocaleDateString(),
-      expense.clients?.name || '',
-      expense.payment_method || '',
-      expense.tax_deductible ? 'Yes' : 'No',
-      expense.status
-    ])
-    
-    const csvContent = [
-      headers.join(','),
-      ...csvData.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n')
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', `expenses_${new Date().toISOString().split('T')[0]}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    try {
+      const headers = [
+        'Title',
+        'Description',
+        'Amount',
+        'Currency',
+        'Category',
+        'Date',
+        'Client',
+        'Payment Method',
+        'Tax Deductible',
+        'Status'
+      ]
+
+      const csvData = filteredExpenses.map(expense => [
+        expense.title,
+        expense.description || '',
+        expense.amount,
+        expense.currency,
+        expense.category,
+        new Date(expense.expense_date).toLocaleDateString(),
+        expense.clients?.name || '',
+        expense.payment_method || '',
+        expense.tax_deductible ? 'Yes' : 'No',
+        expense.status
+      ])
+
+      const csvContent = [
+        headers.join(','),
+        ...csvData.map(row => row.map(cell => `"${cell}"`).join(','))
+      ].join('\n')
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.setAttribute('href', url)
+      link.setAttribute('download', `expenses_${new Date().toISOString().split('T')[0]}.csv`)
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch (error) {
+      console.error('Error exporting CSV:', error)
+      alert('Failed to export expenses. Please try again.')
+    }
   }
 
   // Apply filters and search
   const filteredExpenses = expenses
     .filter(expense => {
-      if (!expense) return false; // Skip any undefined or null expenses
+      if (!expense) return false
+
       // Search query
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
@@ -213,7 +223,8 @@ export default function Expenses() {
       return true
     })
     .sort((a, b) => {
-      if (!a || !b) return 0; // Handle potential undefined or null values
+      if (!a || !b) return 0
+      
       if (sortField === 'amount') {
         return sortDirection === 'asc' ? a.amount - b.amount : b.amount - a.amount
       } else if (sortField === 'expense_date') {
@@ -236,7 +247,7 @@ export default function Expenses() {
     .reduce((sum, expense) => sum + (expense?.amount || 0), 0)
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return '';
+    if (!dateString) return ''
     try {
       return new Date(dateString).toLocaleDateString('en-US', {
         month: 'short',
@@ -244,12 +255,12 @@ export default function Expenses() {
         year: 'numeric'
       })
     } catch (e) {
-      return dateString;
+      return dateString
     }
   }
 
   const getCategoryLabel = (categoryValue: string) => {
-    if (!categoryValue) return '';
+    if (!categoryValue) return ''
     const category = categories.find(cat => cat.value === categoryValue)
     return category ? category.label : categoryValue
   }
@@ -266,6 +277,24 @@ export default function Expenses() {
                 <div key={i} className="h-20 bg-gray-200 dark:bg-gray-700 rounded"></div>
               ))}
             </div>
+          </div>
+        </div>
+      </Layout>
+    )
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="p-6">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 text-center">
+            <h3 className="text-lg font-medium text-red-800 dark:text-red-300">{error}</h3>
+            <button 
+              onClick={() => window.location.reload()}
+              className="mt-3 bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-200 px-4 py-2 rounded-md hover:bg-red-200 dark:hover:bg-red-700 transition-colors"
+            >
+              Retry
+            </button>
           </div>
         </div>
       </Layout>

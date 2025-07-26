@@ -99,6 +99,7 @@ export interface Database {
           name: string
           email: string | null
           phone: string | null
+          company: string | null
           platform: 'fiverr' | 'upwork' | 'direct' | 'other'
           platform_profile: string | null
           contact_method: 'email' | 'whatsapp' | 'telegram' | 'discord' | 'other'
@@ -117,6 +118,7 @@ export interface Database {
           name: string
           email?: string | null
           phone?: string | null
+          company?: string | null
           platform?: 'fiverr' | 'upwork' | 'direct' | 'other'
           platform_profile?: string | null
           contact_method?: 'email' | 'whatsapp' | 'telegram' | 'discord' | 'other'
@@ -135,6 +137,7 @@ export interface Database {
           name?: string
           email?: string | null
           phone?: string | null
+          company?: string | null
           platform?: 'fiverr' | 'upwork' | 'direct' | 'other'
           platform_profile?: string | null
           contact_method?: 'email' | 'whatsapp' | 'telegram' | 'discord' | 'other'
@@ -155,10 +158,12 @@ export interface Database {
           client_id: string | null
           title: string
           message: string | null
+          description: string | null
           due_date: string
+          datetime: string | null
           reminder_type: 'follow_up' | 'payment' | 'project_deadline' | 'custom'
           priority: 'low' | 'medium' | 'high' | 'urgent'
-          status: 'pending' | 'completed' | 'snoozed' | 'cancelled'
+          status: 'pending' | 'completed' | 'snoozed' | 'cancelled' | 'active' | 'done'
           is_recurring: boolean
           recurring_interval: 'daily' | 'weekly' | 'monthly' | 'yearly' | null
           ai_suggested: boolean
@@ -173,10 +178,12 @@ export interface Database {
           client_id?: string | null
           title: string
           message?: string | null
+          description?: string | null
           due_date: string
+          datetime?: string | null
           reminder_type?: 'follow_up' | 'payment' | 'project_deadline' | 'custom'
           priority?: 'low' | 'medium' | 'high' | 'urgent'
-          status?: 'pending' | 'completed' | 'snoozed' | 'cancelled'
+          status?: 'pending' | 'completed' | 'snoozed' | 'cancelled' | 'active' | 'done'
           is_recurring?: boolean
           recurring_interval?: 'daily' | 'weekly' | 'monthly' | 'yearly' | null
           ai_suggested?: boolean
@@ -191,10 +198,12 @@ export interface Database {
           client_id?: string | null
           title?: string
           message?: string | null
+          description?: string | null
           due_date?: string
+          datetime?: string | null
           reminder_type?: 'follow_up' | 'payment' | 'project_deadline' | 'custom'
           priority?: 'low' | 'medium' | 'high' | 'urgent'
-          status?: 'pending' | 'completed' | 'snoozed' | 'cancelled'
+          status?: 'pending' | 'completed' | 'snoozed' | 'cancelled' | 'active' | 'done'
           is_recurring?: boolean
           recurring_interval?: 'daily' | 'weekly' | 'monthly' | 'yearly' | null
           ai_suggested?: boolean
@@ -212,10 +221,11 @@ export interface Database {
           invoice_number: string | null
           title: string
           description: string | null
+          project: string | null
           amount: number
           currency: string
           due_date: string
-          status: 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled'
+          status: 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled' | 'unpaid'
           payment_method: string | null
           payment_date: string | null
           late_fee: number
@@ -232,10 +242,11 @@ export interface Database {
           invoice_number?: string | null
           title: string
           description?: string | null
+          project?: string | null
           amount: number
           currency?: string
           due_date: string
-          status?: 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled'
+          status?: 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled' | 'unpaid'
           payment_method?: string | null
           payment_date?: string | null
           late_fee?: number
@@ -252,10 +263,11 @@ export interface Database {
           invoice_number?: string | null
           title?: string
           description?: string | null
+          project?: string | null
           amount?: number
           currency?: string
           due_date?: string
-          status?: 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled'
+          status?: 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled' | 'unpaid'
           payment_method?: string | null
           payment_date?: string | null
           late_fee?: number

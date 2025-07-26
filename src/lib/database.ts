@@ -10,560 +10,806 @@ import type {
 
 // Client operations
 export const clientsApi = {
-  async getAll(userId: string) {
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return data as Client[]
+  async getAll(userId: string): Promise<Client[]> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching clients:', error)
+      throw error
+    }
   },
 
-  async getById(id: string) {
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('id', id)
-      .single()
-    
-    if (error) throw error
-    return data as Client
+  async getById(id: string): Promise<Client> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', id)
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching client:', error)
+      throw error
+    }
   },
 
-  async create(client: ClientInsert) {
-    const { data, error } = await supabase
-      .from('clients')
-      .insert(client)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Client
+  async create(client: ClientInsert): Promise<Client> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .insert(client)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating client:', error)
+      throw error
+    }
   },
 
-  async update(id: string, updates: ClientUpdate) {
-    const { data, error } = await supabase
-      .from('clients')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Client
+  async update(id: string, updates: ClientUpdate): Promise<Client> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating client:', error)
+      throw error
+    }
   },
 
-  async delete(id: string) {
-    const { error } = await supabase
-      .from('clients')
-      .delete()
-      .eq('id', id)
-    
-    if (error) throw error
+  async delete(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting client:', error)
+      throw error
+    }
   },
 
-  async search(userId: string, query: string) {
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('user_id', userId)
-      .or(`name.ilike.%${query}%,email.ilike.%${query}%,notes.ilike.%${query}%`)
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return data as Client[]
+  async search(userId: string, query: string): Promise<Client[]> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('user_id', userId)
+        .or(`name.ilike.%${query}%,email.ilike.%${query}%,notes.ilike.%${query}%`)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error searching clients:', error)
+      throw error
+    }
   }
 }
 
 // Reminder operations
 export const remindersApi = {
   async getAll(userId: string) {
-    const { data, error } = await supabase
-      .from('reminders')
-      .select(`
-        *,
-        clients (
-          id,
-          name,
-          platform
-        )
-      `)
-      .eq('user_id', userId)
-      .order('due_date', { ascending: true })
-    
-    if (error) throw error
-    return data
+    try {
+      const { data, error } = await supabase
+        .from('reminders')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            platform
+          )
+        `)
+        .eq('user_id', userId)
+        .order('due_date', { ascending: true })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching reminders:', error)
+      throw error
+    }
   },
 
   async getUpcoming(userId: string, days: number = 7) {
-    const futureDate = new Date()
-    futureDate.setDate(futureDate.getDate() + days)
-    
-    const { data, error } = await supabase
-      .from('reminders')
-      .select(`
-        *,
-        clients (
-          id,
-          name,
-          platform
-        )
-      `)
-      .eq('user_id', userId)
-      .eq('status', 'pending')
-      .lte('due_date', futureDate.toISOString())
-      .order('due_date', { ascending: true })
-    
-    if (error) throw error
-    return data
+    try {
+      const futureDate = new Date()
+      futureDate.setDate(futureDate.getDate() + days)
+      
+      const { data, error } = await supabase
+        .from('reminders')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            platform
+          )
+        `)
+        .eq('user_id', userId)
+        .in('status', ['pending', 'active'])
+        .lte('due_date', futureDate.toISOString())
+        .order('due_date', { ascending: true })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching upcoming reminders:', error)
+      throw error
+    }
   },
 
-  async create(reminder: ReminderInsert) {
-    const { data, error } = await supabase
-      .from('reminders')
-      .insert(reminder)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Reminder
+  async create(reminder: ReminderInsert): Promise<Reminder> {
+    try {
+      const { data, error } = await supabase
+        .from('reminders')
+        .insert(reminder)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating reminder:', error)
+      throw error
+    }
   },
 
-  async update(id: string, updates: ReminderUpdate) {
-    const { data, error } = await supabase
-      .from('reminders')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Reminder
+  async update(id: string, updates: ReminderUpdate): Promise<Reminder> {
+    try {
+      const { data, error } = await supabase
+        .from('reminders')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating reminder:', error)
+      throw error
+    }
   },
 
-  async delete(id: string) {
-    const { error } = await supabase
-      .from('reminders')
-      .delete()
-      .eq('id', id)
-    
-    if (error) throw error
+  async delete(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('reminders')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting reminder:', error)
+      throw error
+    }
   },
 
-  async markCompleted(id: string) {
-    const { data, error } = await supabase
-      .from('reminders')
-      .update({ 
-        status: 'completed',
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Reminder
+  async markCompleted(id: string): Promise<Reminder> {
+    try {
+      const { data, error } = await supabase
+        .from('reminders')
+        .update({ 
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error marking reminder as completed:', error)
+      throw error
+    }
   }
 }
 
 // Invoice operations
 export const invoicesApi = {
   async getAll(userId: string) {
-    const { data, error } = await supabase
-      .from('invoices')
-      .select(`
-        *,
-        clients (
-          id,
-          name,
-          email,
-          platform
-        )
-      `)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return data
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            email,
+            platform
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching invoices:', error)
+      throw error
+    }
   },
 
   async getOverdue(userId: string) {
-    const today = new Date().toISOString().split('T')[0]
-    
-    const { data, error } = await supabase
-      .from('invoices')
-      .select(`
-        *,
-        clients (
-          id,
-          name,
-          email,
-          platform
-        )
-      `)
-      .eq('user_id', userId)
-      .in('status', ['sent', 'pending'])
-      .lt('due_date', today)
-      .order('due_date', { ascending: true })
-    
-    if (error) throw error
-    return data
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      
+      const { data, error } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            email,
+            platform
+          )
+        `)
+        .eq('user_id', userId)
+        .in('status', ['sent', 'pending', 'unpaid'])
+        .lt('due_date', today)
+        .order('due_date', { ascending: true })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching overdue invoices:', error)
+      throw error
+    }
   },
 
-  async create(invoice: InvoiceInsert) {
-    const { data, error } = await supabase
-      .from('invoices')
-      .insert(invoice)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Invoice
+  async create(invoice: InvoiceInsert): Promise<Invoice> {
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .insert(invoice)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating invoice:', error)
+      throw error
+    }
   },
 
-  async update(id: string, updates: InvoiceUpdate) {
-    const { data, error } = await supabase
-      .from('invoices')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Invoice
+  async update(id: string, updates: InvoiceUpdate): Promise<Invoice> {
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating invoice:', error)
+      throw error
+    }
   },
 
-  async delete(id: string) {
-    const { error } = await supabase
-      .from('invoices')
-      .delete()
-      .eq('id', id)
-    
-    if (error) throw error
+  async delete(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('invoices')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting invoice:', error)
+      throw error
+    }
   },
 
-  async markPaid(id: string, paymentMethod?: string) {
-    const { data, error } = await supabase
-      .from('invoices')
-      .update({ 
-        status: 'paid',
-        payment_date: new Date().toISOString(),
-        payment_method: paymentMethod
-      })
-      .eq('id', id)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Invoice
+  async markPaid(id: string, paymentMethod?: string): Promise<Invoice> {
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .update({ 
+          status: 'paid',
+          payment_date: new Date().toISOString(),
+          payment_method: paymentMethod
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error marking invoice as paid:', error)
+      throw error
+    }
   }
 }
 
 // Profile operations
 export const profilesApi = {
-  async get(userId: string) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle()
-    
-    if (error) throw error
-    return data as Profile | null
+  async get(userId: string): Promise<Profile | null> {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+      throw error
+    }
   },
 
-  async create(profile: ProfileInsert) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .insert(profile)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Profile
+  async create(profile: ProfileInsert): Promise<Profile> {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert(profile)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating profile:', error)
+      throw error
+    }
   },
 
-  async update(userId: string, updates: ProfileUpdate) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', userId)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Profile
+  async update(userId: string, updates: ProfileUpdate): Promise<Profile> {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      throw error
+    }
   }
 }
 
 // Notification operations
 export const notificationsApi = {
-  async getAll(userId: string) {
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return data as Notification[]
+  async getAll(userId: string): Promise<Notification[]> {
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching notifications:', error)
+      throw error
+    }
   },
 
-  async getUnread(userId: string) {
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('is_read', false)
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return data as Notification[]
+  async getUnread(userId: string): Promise<Notification[]> {
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_read', false)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching unread notifications:', error)
+      throw error
+    }
   },
 
-  async markAsRead(id: string) {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('id', id)
-    
-    if (error) throw error
+  async markAsRead(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error marking notification as read:', error)
+      throw error
+    }
   },
 
-  async markAllAsRead(userId: string) {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('user_id', userId)
-      .eq('is_read', false)
-    
-    if (error) throw error
+  async markAllAsRead(userId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', userId)
+        .eq('is_read', false)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error)
+      throw error
+    }
   },
 
-  async create(notification: NotificationInsert) {
-    const { data, error } = await supabase
-      .from('notifications')
-      .insert(notification)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Notification
+  async create(notification: NotificationInsert): Promise<Notification> {
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert(notification)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating notification:', error)
+      throw error
+    }
   }
 }
 
 // Expense operations
 export const expensesApi = {
-  async getAll(userId: string) {
-    const { data, error } = await supabase
-      .from('expenses')
-      .select(`
-        *,
-        clients (
-          id,
-          name,
-          platform
-        )
-      `)
-      .eq('user_id', userId)
-      .order('expense_date', { ascending: false })
-    
-    if (error) throw error
-    return data as Expense[]
+  async getAll(userId: string): Promise<Expense[]> {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            platform
+          )
+        `)
+        .eq('user_id', userId)
+        .order('expense_date', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching expenses:', error)
+      return []
+    }
   },
 
-  async getById(id: string) {
-    const { data, error } = await supabase
-      .from('expenses')
-      .select(`
-        *,
-        clients (
-          id,
-          name,
-          platform
-        )
-      `)
-      .eq('id', id)
-      .single()
-    
-    if (error) throw error
-    return data as Expense
+  async getById(id: string): Promise<Expense> {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            platform
+          )
+        `)
+        .eq('id', id)
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching expense:', error)
+      throw error
+    }
   },
 
-  async create(expense: ExpenseInsert) {
-    const { data, error } = await supabase
-      .from('expenses')
-      .insert(expense)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Expense
+  async create(expense: ExpenseInsert): Promise<Expense> {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert(expense)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating expense:', error)
+      throw error
+    }
   },
 
-  async update(id: string, updates: ExpenseUpdate) {
-    const { data, error } = await supabase
-      .from('expenses')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Expense
+  async update(id: string, updates: ExpenseUpdate): Promise<Expense> {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating expense:', error)
+      throw error
+    }
   },
 
-  async delete(id: string) {
-    const { error } = await supabase
-      .from('expenses')
-      .delete()
-      .eq('id', id)
-    
-    if (error) throw error
+  async delete(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting expense:', error)
+      throw error
+    }
   },
 
   async getByCategory(userId: string, startDate: string, endDate: string) {
-    const { data, error } = await supabase
-      .rpc('get_expense_totals_by_category', {
-        user_id_param: userId,
-        start_date_param: startDate,
-        end_date_param: endDate
-      })
-    
-    if (error) throw error
-    return data
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('category, amount, currency')
+        .eq('user_id', userId)
+        .gte('expense_date', startDate)
+        .lte('expense_date', endDate)
+      
+      if (error) throw error
+      
+      // Group by category and sum amounts
+      const categoryTotals = (data || []).reduce((acc, expense) => {
+        const category = expense.category
+        if (!acc[category]) {
+          acc[category] = 0
+        }
+        acc[category] += expense.amount
+        return acc
+      }, {} as Record<string, number>)
+      
+      return Object.entries(categoryTotals).map(([category, total]) => ({
+        category,
+        total
+      }))
+    } catch (error) {
+      console.error('Error fetching expenses by category:', error)
+      return []
+    }
   },
 
   async getByClient(userId: string, startDate: string, endDate: string) {
-    const { data, error } = await supabase
-      .rpc('get_expense_totals_by_client', {
-        user_id_param: userId,
-        start_date_param: startDate,
-        end_date_param: endDate
-      })
-    
-    if (error) throw error
-    return data
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select(`
+          amount, 
+          currency,
+          clients (
+            id,
+            name
+          )
+        `)
+        .eq('user_id', userId)
+        .gte('expense_date', startDate)
+        .lte('expense_date', endDate)
+        .not('client_id', 'is', null)
+      
+      if (error) throw error
+      
+      // Group by client and sum amounts
+      const clientTotals = (data || []).reduce((acc, expense) => {
+        if (!expense.clients) return acc
+        
+        const clientId = expense.clients.id
+        const clientName = expense.clients.name
+        
+        if (!acc[clientId]) {
+          acc[clientId] = {
+            client_id: clientId,
+            client_name: clientName,
+            total: 0
+          }
+        }
+        acc[clientId].total += expense.amount
+        return acc
+      }, {} as Record<string, any>)
+      
+      return Object.values(clientTotals)
+    } catch (error) {
+      console.error('Error fetching expenses by client:', error)
+      return []
+    }
   },
 
   async getMonthlyTotals(userId: string, year: number) {
-    const { data, error } = await supabase
-      .rpc('get_monthly_expense_totals', {
-        user_id_param: userId,
-        year_param: year
+    try {
+      const startDate = `${year}-01-01`
+      const endDate = `${year}-12-31`
+      
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('amount, expense_date')
+        .eq('user_id', userId)
+        .gte('expense_date', startDate)
+        .lte('expense_date', endDate)
+      
+      if (error) throw error
+      
+      // Initialize array with 12 months
+      const monthlyTotals = Array(12).fill(0).map((_, index) => ({
+        month: index + 1,
+        total: 0
+      }))
+      
+      // Group by month and sum amounts
+      ;(data || []).forEach(expense => {
+        const month = new Date(expense.expense_date).getMonth()
+        monthlyTotals[month].total += expense.amount
       })
-    
-    if (error) throw error
-    return data
+      
+      return monthlyTotals
+    } catch (error) {
+      console.error('Error fetching monthly expense totals:', error)
+      return Array(12).fill(0).map((_, index) => ({
+        month: index + 1,
+        total: 0
+      }))
+    }
   },
 
-  async search(userId: string, query: string) {
-    const { data, error } = await supabase
-      .from('expenses')
-      .select(`
-        *,
-        clients (
-          id,
-          name,
-          platform
-        )
-      `)
-      .eq('user_id', userId)
-      .or(`title.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%`)
-      .order('expense_date', { ascending: false })
-    
-    if (error) throw error
-    return data as Expense[]
+  async search(userId: string, query: string): Promise<Expense[]> {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            platform
+          )
+        `)
+        .eq('user_id', userId)
+        .or(`title.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%`)
+        .order('expense_date', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error searching expenses:', error)
+      return []
+    }
   },
 
-  async getTaxDeductible(userId: string, year: number) {
-    const startDate = `${year}-01-01`
-    const endDate = `${year}-12-31`
-    
-    const { data, error } = await supabase
-      .from('expenses')
-      .select(`
-        *,
-        clients (
-          id,
-          name,
-          platform
-        )
-      `)
-      .eq('user_id', userId)
-      .eq('tax_deductible', true)
-      .gte('expense_date', startDate)
-      .lte('expense_date', endDate)
-      .order('expense_date', { ascending: false })
-    
-    if (error) throw error
-    return data as Expense[]
+  async getTaxDeductible(userId: string, year: number): Promise<Expense[]> {
+    try {
+      const startDate = `${year}-01-01`
+      const endDate = `${year}-12-31`
+      
+      const { data, error } = await supabase
+        .from('expenses')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            platform
+          )
+        `)
+        .eq('user_id', userId)
+        .eq('tax_deductible', true)
+        .gte('expense_date', startDate)
+        .lte('expense_date', endDate)
+        .order('expense_date', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching tax deductible expenses:', error)
+      return []
+    }
   }
 }
 
 // Dashboard stats
 export const dashboardApi = {
   async getStats(userId: string) {
-    const [clients, reminders, invoices, expenses] = await Promise.all([
-      clientsApi.getAll(userId),
-      remindersApi.getUpcoming(userId),
-      invoicesApi.getAll(userId),
-      expensesApi.getAll(userId)
-    ])
+    try {
+      const [clients, reminders, invoices, expenses] = await Promise.all([
+        clientsApi.getAll(userId),
+        remindersApi.getUpcoming(userId),
+        invoicesApi.getAll(userId),
+        expensesApi.getAll(userId)
+      ])
 
-    const activeClients = clients.filter((c: Client) => c.status === 'active').length
-    const pendingReminders = reminders.filter((r: Reminder) => r.status === 'pending').length
-    const pendingInvoices = invoices.filter((i: Invoice) => ['sent', 'pending'].includes(i.status))
-    const overdueInvoices = invoices.filter((i: Invoice) => {
-      const today = new Date().toISOString().split('T')[0]
-      return ['sent', 'pending'].includes(i.status) && i.due_date < today
-    })
+      const activeClients = clients.filter((c: Client) => c.status === 'active').length
+      const pendingReminders = reminders.filter((r: any) => ['pending', 'active'].includes(r.status)).length
+      const pendingInvoices = invoices.filter((i: any) => ['sent', 'pending', 'unpaid'].includes(i.status))
+      const overdueInvoices = invoices.filter((i: any) => {
+        const today = new Date().toISOString().split('T')[0]
+        return ['sent', 'pending', 'unpaid'].includes(i.status) && i.due_date < today
+      })
 
-    const totalPendingAmount = pendingInvoices.reduce((sum: number, inv: Invoice) => sum + inv.amount, 0)
-    const totalOverdueAmount = overdueInvoices.reduce((sum: number, inv: Invoice) => sum + inv.amount, 0)
-    
-    // Calculate expense stats
-    const currentDate = new Date()
-    const currentMonth = currentDate.getMonth()
-    const currentYear = currentDate.getFullYear()
-    
-    const firstDayOfMonth = new Date(currentYear, currentMonth, 1).toISOString()
-    const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).toISOString()
-    
-    const currentMonthExpenses = expenses.filter((e: Expense) =>
-      e.expense_date >= firstDayOfMonth && e.expense_date <= lastDayOfMonth
-    )
-    
-    const totalMonthlyExpenses = currentMonthExpenses.reduce((sum: number, exp: Expense) => sum + exp.amount, 0)
-    
-    // Get top expense category
-    const categoryTotals: Record<string, number> = {}
-    currentMonthExpenses.forEach((expense: Expense) => {
-      if (!categoryTotals[expense.category]) {
-        categoryTotals[expense.category] = 0
+      const totalPendingAmount = pendingInvoices.reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0)
+      const totalOverdueAmount = overdueInvoices.reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0)
+      
+      // Calculate expense stats
+      const currentDate = new Date()
+      const currentMonth = currentDate.getMonth()
+      const currentYear = currentDate.getFullYear()
+      
+      const firstDayOfMonth = new Date(currentYear, currentMonth, 1).toISOString()
+      const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).toISOString()
+      
+      const currentMonthExpenses = expenses.filter((e: Expense) =>
+        e.expense_date >= firstDayOfMonth && e.expense_date <= lastDayOfMonth
+      )
+      
+      const totalMonthlyExpenses = currentMonthExpenses.reduce((sum: number, exp: Expense) => sum + (exp.amount || 0), 0)
+      
+      // Get top expense category
+      const categoryTotals: Record<string, number> = {}
+      currentMonthExpenses.forEach((expense: Expense) => {
+        if (!categoryTotals[expense.category]) {
+          categoryTotals[expense.category] = 0
+        }
+        categoryTotals[expense.category] += expense.amount || 0
+      })
+      
+      const topExpenseCategory = Object.entries(categoryTotals)
+        .sort(([, a], [, b]) => b - a)
+        .map(([category, amount]) => ({ category, amount }))[0] || null
+
+      return {
+        activeClients,
+        pendingReminders,
+        pendingInvoicesCount: pendingInvoices.length,
+        overdueInvoicesCount: overdueInvoices.length,
+        totalPendingAmount,
+        totalOverdueAmount,
+        recentClients: clients.slice(0, 5),
+        upcomingReminders: reminders.slice(0, 5),
+        recentInvoices: invoices.slice(0, 5),
+        totalMonthlyExpenses,
+        topExpenseCategory,
+        recentExpenses: expenses.slice(0, 5)
       }
-      categoryTotals[expense.category] += expense.amount
-    })
-    
-    const topExpenseCategory = Object.entries(categoryTotals)
-      .sort(([, a], [, b]) => b - a)
-      .map(([category, amount]) => ({ category, amount }))[0] || null
-
-    return {
-      activeClients,
-      pendingReminders,
-      pendingInvoicesCount: pendingInvoices.length,
-      overdueInvoicesCount: overdueInvoices.length,
-      totalPendingAmount,
-      totalOverdueAmount,
-      recentClients: clients.slice(0, 5),
-      upcomingReminders: reminders.slice(0, 5),
-      recentInvoices: invoices.slice(0, 5),
-      totalMonthlyExpenses,
-      topExpenseCategory,
-      recentExpenses: expenses.slice(0, 5)
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error)
+      throw error
     }
   }
 }

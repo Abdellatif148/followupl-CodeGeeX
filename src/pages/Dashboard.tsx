@@ -20,6 +20,9 @@ interface DashboardStats {
   recentClients: any[]
   upcomingReminders: any[]
   recentInvoices: any[]
+  totalMonthlyExpenses: number
+  topExpenseCategory: any
+  recentExpenses: any[]
 }
 
 export default function Dashboard() {
@@ -194,7 +197,7 @@ export default function Dashboard() {
                       <div>
                         <p className="font-medium text-gray-900 dark:text-white">{reminder.title}</p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {reminder.clients?.name} • {formatDate(reminder.due_date)}
+                          {reminder.clients?.name} • {formatDate(reminder.due_date || reminder.datetime)}
                         </p>
                       </div>
                     </div>
@@ -236,7 +239,7 @@ export default function Dashboard() {
                         'bg-yellow-500'
                       }`} />
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{invoice.title}</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{invoice.title || invoice.project}</p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           {invoice.clients?.name} • Due {formatDate(invoice.due_date)}
                         </p>
@@ -270,6 +273,47 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* Monthly Expenses Summary */}
+        {stats?.totalMonthlyExpenses && stats.totalMonthlyExpenses > 0 && (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Monthly Expenses</h2>
+              <Link to="/expenses" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium">
+                View all
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-purple-600 dark:text-purple-400">This Month</p>
+                    <p className="text-2xl font-bold text-purple-900 dark:text-purple-300">
+                      {formatCurrency(stats.totalMonthlyExpenses)}
+                    </p>
+                  </div>
+                  <DollarSign className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+                </div>
+              </div>
+              {stats.topExpenseCategory && (
+                <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Top Category</p>
+                      <p className="text-lg font-bold text-indigo-900 dark:text-indigo-300">
+                        {stats.topExpenseCategory.category}
+                      </p>
+                      <p className="text-sm text-indigo-600 dark:text-indigo-400">
+                        {formatCurrency(stats.topExpenseCategory.amount)}
+                      </p>
+                    </div>
+                    <TrendingUp className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   )

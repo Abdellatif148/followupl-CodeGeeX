@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { Search, X, Users, Bell, FileText, Calendar, DollarSign } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { clientsApi, remindersApi, invoicesApi, expensesApi } from '../lib/database'
-import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 import { useCurrency } from '../hooks/useCurrency'
+import { formatDueDate } from '../utils/dateHelpers'
 
 interface SearchResult {
   id: string
@@ -26,6 +27,7 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
+  const { user } = useAuth()
   const [allData, setAllData] = useState<{
     clients: any[]
     reminders: any[]
@@ -65,17 +67,16 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const loadAllData = async () => {
     setLoading(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const [clients, reminders, invoices, expenses] = await Promise.all([
-          clientsApi.getAll(user.id),
-          remindersApi.getAll(user.id),
-          invoicesApi.getAll(user.id),
-          expensesApi.getAll(user.id)
-        ])
-        
-        setAllData({ clients, reminders, invoices, expenses })
-      }
+      if (!user) return
+      
+      const [clients, reminders, invoices, expenses] = await Promise.all([
+        clientsApi.getAll(user.id),
+        remindersApi.getAll(user.id),
+        invoicesApi.getAll(user.id),
+        expensesApi.getAll(user.id)
+      ])
+      
+      setAllData({ clients, reminders, invoices, expenses })
     } catch (error) {
       console.error('Error loading search data:', error)
     } finally {
@@ -237,24 +238,6 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
     }
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffTime = date.getTime() - now.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    
-    if (diffDays === 0) return 'Today'
-    if (diffDays === 1) return 'Tomorrow'
-    if (diffDays === -1) return 'Yesterday'
-    if (diffDays < 0) return `${Math.abs(diffDays)} days overdue`
-    if (diffDays < 7) return `Due in ${diffDays} days`
-    
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    })
-  }
-
   const getStatusColor = (status: string, type: string) => {
     if (type === 'invoice') {
       switch (status) {
@@ -387,7 +370,7 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
                             )}
                             {result.date && (
                               <span className="text-xs text-gray-500 dark:text-gray-400">
-                                {formatDate(result.date)}
+                                {formatDueDate(result.date)}
                               </span>
                             )}
                           </div>

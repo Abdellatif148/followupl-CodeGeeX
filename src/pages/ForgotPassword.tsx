@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Mail, ArrowLeft, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { auth } from '../lib/supabase'
 import { Link } from 'react-router-dom'
 import DarkModeToggle from '../components/DarkModeToggle'
 
@@ -21,9 +21,7 @@ export default function ForgotPassword() {
     setError('')
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/reset-password`
-      })
+      const { error } = await auth.resetPassword(email)
 
       if (error) {
         setError(error.message)

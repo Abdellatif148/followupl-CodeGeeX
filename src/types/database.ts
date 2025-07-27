@@ -1,58 +1,22 @@
 export interface Database {
   public: {
     Tables: {
-      expenses: {
+      users: {
         Row: {
           id: string
-          user_id: string
-          client_id: string | null
-          title: string
-          description: string | null
-          amount: number
-          currency: string
-          category: string
-          subcategory: string | null
-          expense_date: string
-          payment_method: string | null
-          tax_deductible: boolean
-          status: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
-          tags: string[]
+          email: string
           created_at: string
           updated_at: string
         }
         Insert: {
-          id?: string
-          user_id: string
-          client_id?: string | null
-          title: string
-          description?: string | null
-          amount: number
-          currency: string
-          category: string
-          subcategory?: string | null
-          expense_date: string
-          payment_method?: string | null
-          tax_deductible?: boolean
-          status?: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
-          tags?: string[]
+          id: string
+          email: string
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
-          user_id?: string
-          client_id?: string | null
-          title?: string
-          description?: string | null
-          amount?: number
-          currency?: string
-          category?: string
-          subcategory?: string | null
-          expense_date?: string
-          payment_method?: string | null
-          tax_deductible?: boolean
-          status?: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
-          tags?: string[]
+          email?: string
           created_at?: string
           updated_at?: string
         }
@@ -316,9 +280,74 @@ export interface Database {
           created_at?: string
         }
       }
+      expenses: {
+        Row: {
+          id: string
+          user_id: string
+          client_id: string | null
+          title: string
+          description: string | null
+          amount: number
+          currency: string
+          category: string
+          subcategory: string | null
+          expense_date: string
+          payment_method: string | null
+          tax_deductible: boolean
+          status: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
+          tags: string[]
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          client_id?: string | null
+          title: string
+          description?: string | null
+          amount: number
+          currency: string
+          category: string
+          subcategory?: string | null
+          expense_date: string
+          payment_method?: string | null
+          tax_deductible?: boolean
+          status?: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
+          tags?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          client_id?: string | null
+          title?: string
+          description?: string | null
+          amount?: number
+          currency?: string
+          category?: string
+          subcategory?: string | null
+          expense_date?: string
+          payment_method?: string | null
+          tax_deductible?: boolean
+          status?: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
+          tags?: string[]
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
 }
+
+// Type exports for easier use
+export type User = Database['public']['Tables']['users']['Row']
+export type UserInsert = Database['public']['Tables']['users']['Insert']
+export type UserUpdate = Database['public']['Tables']['users']['Update']
+
+export type Profile = Database['public']['Tables']['profiles']['Row']
+export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
+export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
 
 export type Client = Database['public']['Tables']['clients']['Row']
 export type ClientInsert = Database['public']['Tables']['clients']['Insert']
@@ -331,10 +360,6 @@ export type ReminderUpdate = Database['public']['Tables']['reminders']['Update']
 export type Invoice = Database['public']['Tables']['invoices']['Row']
 export type InvoiceInsert = Database['public']['Tables']['invoices']['Insert']
 export type InvoiceUpdate = Database['public']['Tables']['invoices']['Update']
-
-export type Profile = Database['public']['Tables']['profiles']['Row']
-export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
-export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
 
 export type Notification = Database['public']['Tables']['notifications']['Row']
 export type NotificationInsert = Database['public']['Tables']['notifications']['Insert']

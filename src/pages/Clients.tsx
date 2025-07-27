@@ -8,49 +8,41 @@ import { Link } from 'react-router-dom'
 import Layout from '../components/Layout'
 import ClientForm from '../components/ClientForm'
 import { clientsApi } from '../lib/database'
-import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 import { useCurrency } from '../hooks/useCurrency'
 import { useBusinessAnalytics } from '../hooks/useAnalytics'
+import { formatDate } from '../utils/dateHelpers'
+import { handleSupabaseError, showErrorToast, showSuccessToast } from '../utils/errorHandler'
 import type { Client } from '../types/database'
 
 export default function Clients() {
   const { trackClientAction } = useBusinessAnalytics()
+  const { user } = useAuth()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'archived'>('all')
   const [showEditForm, setShowEditForm] = useState(false)
   const [editingClient, setEditingClient] = useState<Client | null>(null)
-  const [user, setUser] = useState<any>(null)
   const { formatCurrency } = useCurrency()
-  const [toast, setToast] = useState<{
-    type: 'success' | 'error' | 'info'
-    message: string
-  } | null>(null)
 
   useEffect(() => {
     loadClients()
-  }, [])
-
-  // Auto-hide toast after 3 seconds
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [toast])
+  }, [user])
 
   const loadClients = async () => {
+    if (!user) {
+      setLoading(false)
+      return
+    }
+    
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-      
-      if (user) {
-        const clientsData = await clientsApi.getAll(user.id)
-        setClients(clientsData)
-      }
+      const clientsData = await clientsApi.getAll(user.id)
+      setClients(clientsData)
     } catch (error) {
       console.error('Error loading clients:', error)
+      const appError = handleSupabaseError(error)
+      showErrorToast(appError.message)
     } finally {
       setLoading(false)
     }
@@ -96,18 +88,13 @@ export default function Clients() {
         })
         
         // Show success toast
-        setToast({
-          type: 'success',
-          message: 'Client deleted ❌'
-        })
+       showSuccessToast('Client deleted successfully')
         
         loadClients()
       } catch (error) {
         console.error('Error deleting client:', error)
-        setToast({
-          type: 'error',
-          message: 'Failed to delete client. Please try again.'
-        })
+      const appError = handleSupabaseError(error)
+      showErrorToast(appError.message)
       }
     }
   }
@@ -126,28 +113,20 @@ export default function Clients() {
       })
       
       // Show success toast
-      setToast({
-        type: 'success',
-        message: `Client marked as ${newStatus} 🔁`
-      })
+      showSuccessToast(`Client marked as ${newStatus}`)
       
       loadClients()
     } catch (error) {
       console.error('Error updating client status:', error)
-      setToast({
-        type: 'error',
-        message: 'Failed to update client status'
-      })
+      const appError = handleSupabaseError(error)
+      showErrorToast(appError.message)
     }
   }
 
   const handleFormSuccess = () => {
     setShowEditForm(false)
     setEditingClient(null)
-    setToast({
-      type: 'success',
-      message: 'Client updated successfully ✅'
-    })
+    showSuccessToast('Client updated successfully')
     loadClients()
   }
 
@@ -162,15 +141,6 @@ export default function Clients() {
       case 'direct': return '💼'
       default: return '🌐'
     }
-  }
-
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'Never'
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    })
   }
 
   if (loading) {
@@ -228,24 +198,6 @@ export default function Clients() {
             Add Client
           </Link>
         </div>
-
-        {/* Toast Notification */}
-        {toast && (
-          <div className={`fixed top-20 right-4 z-50 p-4 rounded-lg shadow-lg border transition-all duration-300 ${
-            toast.type === 'success' 
-              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300'
-              : toast.type === 'error'
-              ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
-              : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300'
-          }`}>
-            <div className="flex items-center gap-3">
-              {toast.type === 'success' && <CheckCircle className="w-5 h-5" />}
-              {toast.type === 'error' && <XCircle className="w-5 h-5" />}
-              {toast.type === 'info' && <AlertTriangle className="w-5 h-5" />}
-              <span className="font-medium">{toast.message}</span>
-            </div>
-          </div>
-        )}
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4">

@@ -18,10 +18,13 @@ export const clientsApi = {
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching clients:', error)
+        throw error
+      }
       return data || []
     } catch (error) {
-      console.error('Error fetching clients:', error)
+      console.error('Error in clientsApi.getAll:', error)
       throw error
     }
   },
@@ -34,10 +37,13 @@ export const clientsApi = {
         .eq('id', id)
         .single()
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching client:', error)
+        throw error
+      }
       return data
     } catch (error) {
-      console.error('Error fetching client:', error)
+      console.error('Error in clientsApi.getById:', error)
       throw error
     }
   },
@@ -50,10 +56,13 @@ export const clientsApi = {
         .select()
         .single()
       
-      if (error) throw error
+      if (error) {
+        console.error('Error creating client:', error)
+        throw error
+      }
       return data
     } catch (error) {
-      console.error('Error creating client:', error)
+      console.error('Error in clientsApi.create:', error)
       throw error
     }
   },
@@ -67,10 +76,13 @@ export const clientsApi = {
         .select()
         .single()
       
-      if (error) throw error
+      if (error) {
+        console.error('Error updating client:', error)
+        throw error
+      }
       return data
     } catch (error) {
-      console.error('Error updating client:', error)
+      console.error('Error in clientsApi.update:', error)
       throw error
     }
   },
@@ -82,9 +94,12 @@ export const clientsApi = {
         .delete()
         .eq('id', id)
       
-      if (error) throw error
+      if (error) {
+        console.error('Error deleting client:', error)
+        throw error
+      }
     } catch (error) {
-      console.error('Error deleting client:', error)
+      console.error('Error in clientsApi.delete:', error)
       throw error
     }
   },
@@ -98,10 +113,13 @@ export const clientsApi = {
         .or(`name.ilike.%${query}%,email.ilike.%${query}%,notes.ilike.%${query}%`)
         .order('created_at', { ascending: false })
       
-      if (error) throw error
+      if (error) {
+        console.error('Error searching clients:', error)
+        throw error
+      }
       return data || []
     } catch (error) {
-      console.error('Error searching clients:', error)
+      console.error('Error in clientsApi.search:', error)
       throw error
     }
   }
@@ -124,10 +142,13 @@ export const remindersApi = {
         .eq('user_id', userId)
         .order('due_date', { ascending: true })
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching reminders:', error)
+        throw error
+      }
       return data || []
     } catch (error) {
-      console.error('Error fetching reminders:', error)
+      console.error('Error in remindersApi.getAll:', error)
       throw error
     }
   },
@@ -152,10 +173,13 @@ export const remindersApi = {
         .lte('due_date', futureDate.toISOString())
         .order('due_date', { ascending: true })
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching upcoming reminders:', error)
+        throw error
+      }
       return data || []
     } catch (error) {
-      console.error('Error fetching upcoming reminders:', error)
+      console.error('Error in remindersApi.getUpcoming:', error)
       throw error
     }
   },
@@ -168,10 +192,13 @@ export const remindersApi = {
         .select()
         .single()
       
-      if (error) throw error
+      if (error) {
+        console.error('Error creating reminder:', error)
+        throw error
+      }
       return data
     } catch (error) {
-      console.error('Error creating reminder:', error)
+      console.error('Error in remindersApi.create:', error)
       throw error
     }
   },
@@ -185,10 +212,13 @@ export const remindersApi = {
         .select()
         .single()
       
-      if (error) throw error
+      if (error) {
+        console.error('Error updating reminder:', error)
+        throw error
+      }
       return data
     } catch (error) {
-      console.error('Error updating reminder:', error)
+      console.error('Error in remindersApi.update:', error)
       throw error
     }
   },
@@ -200,9 +230,12 @@ export const remindersApi = {
         .delete()
         .eq('id', id)
       
-      if (error) throw error
+      if (error) {
+        console.error('Error deleting reminder:', error)
+        throw error
+      }
     } catch (error) {
-      console.error('Error deleting reminder:', error)
+      console.error('Error in remindersApi.delete:', error)
       throw error
     }
   },
@@ -219,10 +252,13 @@ export const remindersApi = {
         .select()
         .single()
       
-      if (error) throw error
+      if (error) {
+        console.error('Error marking reminder as completed:', error)
+        throw error
+      }
       return data
     } catch (error) {
-      console.error('Error marking reminder as completed:', error)
+      console.error('Error in remindersApi.markCompleted:', error)
       throw error
     }
   }
@@ -246,10 +282,13 @@ export const invoicesApi = {
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching invoices:', error)
+        throw error
+      }
       return data || []
     } catch (error) {
-      console.error('Error fetching invoices:', error)
+      console.error('Error in invoicesApi.getAll:', error)
       throw error
     }
   },
@@ -274,10 +313,13 @@ export const invoicesApi = {
         .lt('due_date', today)
         .order('due_date', { ascending: true })
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching overdue invoices:', error)
+        throw error
+      }
       return data || []
     } catch (error) {
-      console.error('Error fetching overdue invoices:', error)
+      console.error('Error in invoicesApi.getOverdue:', error)
       throw error
     }
   },
@@ -290,10 +332,13 @@ export const invoicesApi = {
         .select()
         .single()
       
-      if (error) throw error
+      if (error) {
+        console.error('Error creating invoice:', error)
+        throw error
+      }
       return data
     } catch (error) {
-      console.error('Error creating invoice:', error)
+      console.error('Error in invoicesApi.create:', error)
       throw error
     }
   },
@@ -307,10 +352,13 @@ export const invoicesApi = {
         .select()
         .single()
       
-      if (error) throw error
+      if (error) {
+        console.error('Error updating invoice:', error)
+        throw error
+      }
       return data
     } catch (error) {
-      console.error('Error updating invoice:', error)
+      console.error('Error in invoicesApi.update:', error)
       throw error
     }
   },
@@ -322,9 +370,12 @@ export const invoicesApi = {
         .delete()
         .eq('id', id)
       
-      if (error) throw error
+      if (error) {
+        console.error('Error deleting invoice:', error)
+        throw error
+      }
     } catch (error) {
-      console.error('Error deleting invoice:', error)
+      console.error('Error in invoicesApi.delete:', error)
       throw error
     }
   },
@@ -342,10 +393,13 @@ export const invoicesApi = {
         .select()
         .single()
       
-      if (error) throw error
+      if (error) {
+        console.error('Error marking invoice as paid:', error)
+        throw error
+      }
       return data
     } catch (error) {
-      console.error('Error marking invoice as paid:', error)
+      console.error('Error in invoicesApi.markPaid:', error)
       throw error
     }
   }
@@ -361,10 +415,13 @@ export const profilesApi = {
         .eq('id', userId)
         .maybeSingle()
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching profile:', error)
+        throw error
+      }
       return data
     } catch (error) {
-      console.error('Error fetching profile:', error)
+      console.error('Error in profilesApi.get:', error)
       throw error
     }
   },
@@ -377,10 +434,13 @@ export const profilesApi = {
         .select()
         .single()
       
-      if (error) throw error
+      if (error) {
+        console.error('Error creating profile:', error)
+        throw error
+      }
       return data
     } catch (error) {
-      console.error('Error creating profile:', error)
+      console.error('Error in profilesApi.create:', error)
       throw error
     }
   },
@@ -394,10 +454,13 @@ export const profilesApi = {
         .select()
         .single()
       
-      if (error) throw error
+      if (error) {
+        console.error('Error updating profile:', error)
+        throw error
+      }
       return data
     } catch (error) {
-      console.error('Error updating profile:', error)
+      console.error('Error in profilesApi.update:', error)
       throw error
     }
   }
@@ -413,10 +476,13 @@ export const notificationsApi = {
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching notifications:', error)
+        throw error
+      }
       return data || []
     } catch (error) {
-      console.error('Error fetching notifications:', error)
+      console.error('Error in notificationsApi.getAll:', error)
       throw error
     }
   },
@@ -430,10 +496,13 @@ export const notificationsApi = {
         .eq('is_read', false)
         .order('created_at', { ascending: false })
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching unread notifications:', error)
+        throw error
+      }
       return data || []
     } catch (error) {
-      console.error('Error fetching unread notifications:', error)
+      console.error('Error in notificationsApi.getUnread:', error)
       throw error
     }
   },
@@ -445,9 +514,12 @@ export const notificationsApi = {
         .update({ is_read: true })
         .eq('id', id)
       
-      if (error) throw error
+      if (error) {
+        console.error('Error marking notification as read:', error)
+        throw error
+      }
     } catch (error) {
-      console.error('Error marking notification as read:', error)
+      console.error('Error in notificationsApi.markAsRead:', error)
       throw error
     }
   },
@@ -460,9 +532,12 @@ export const notificationsApi = {
         .eq('user_id', userId)
         .eq('is_read', false)
       
-      if (error) throw error
+      if (error) {
+        console.error('Error marking all notifications as read:', error)
+        throw error
+      }
     } catch (error) {
-      console.error('Error marking all notifications as read:', error)
+      console.error('Error in notificationsApi.markAllAsRead:', error)
       throw error
     }
   },
@@ -475,10 +550,13 @@ export const notificationsApi = {
         .select()
         .single()
       
-      if (error) throw error
+      if (error) {
+        console.error('Error creating notification:', error)
+        throw error
+      }
       return data
     } catch (error) {
-      console.error('Error creating notification:', error)
+      console.error('Error in notificationsApi.create:', error)
       throw error
     }
   }
@@ -501,10 +579,13 @@ export const expensesApi = {
         .eq('user_id', userId)
         .order('expense_date', { ascending: false })
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching expenses:', error)
+        throw error
+      }
       return data || []
     } catch (error) {
-      console.error('Error fetching expenses:', error)
+      console.error('Error in expensesApi.getAll:', error)
       return []
     }
   },
@@ -524,10 +605,13 @@ export const expensesApi = {
         .eq('id', id)
         .single()
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching expense:', error)
+        throw error
+      }
       return data
     } catch (error) {
-      console.error('Error fetching expense:', error)
+      console.error('Error in expensesApi.getById:', error)
       throw error
     }
   },
@@ -540,10 +624,13 @@ export const expensesApi = {
         .select()
         .single()
       
-      if (error) throw error
+      if (error) {
+        console.error('Error creating expense:', error)
+        throw error
+      }
       return data
     } catch (error) {
-      console.error('Error creating expense:', error)
+      console.error('Error in expensesApi.create:', error)
       throw error
     }
   },
@@ -557,10 +644,13 @@ export const expensesApi = {
         .select()
         .single()
       
-      if (error) throw error
+      if (error) {
+        console.error('Error updating expense:', error)
+        throw error
+      }
       return data
     } catch (error) {
-      console.error('Error updating expense:', error)
+      console.error('Error in expensesApi.update:', error)
       throw error
     }
   },
@@ -572,9 +662,12 @@ export const expensesApi = {
         .delete()
         .eq('id', id)
       
-      if (error) throw error
+      if (error) {
+        console.error('Error deleting expense:', error)
+        throw error
+      }
     } catch (error) {
-      console.error('Error deleting expense:', error)
+      console.error('Error in expensesApi.delete:', error)
       throw error
     }
   },
@@ -588,7 +681,10 @@ export const expensesApi = {
         .gte('expense_date', startDate)
         .lte('expense_date', endDate)
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching expenses by category:', error)
+        throw error
+      }
       
       // Group by category and sum amounts
       const categoryTotals = (data || []).reduce((acc, expense) => {
@@ -605,7 +701,7 @@ export const expensesApi = {
         total
       }))
     } catch (error) {
-      console.error('Error fetching expenses by category:', error)
+      console.error('Error in expensesApi.getByCategory:', error)
       return []
     }
   },
@@ -627,7 +723,10 @@ export const expensesApi = {
         .lte('expense_date', endDate)
         .not('client_id', 'is', null)
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching expenses by client:', error)
+        throw error
+      }
       
       // Group by client and sum amounts
       const clientTotals = (data || []).reduce((acc, expense) => {
@@ -649,7 +748,7 @@ export const expensesApi = {
       
       return Object.values(clientTotals)
     } catch (error) {
-      console.error('Error fetching expenses by client:', error)
+      console.error('Error in expensesApi.getByClient:', error)
       return []
     }
   },
@@ -666,7 +765,10 @@ export const expensesApi = {
         .gte('expense_date', startDate)
         .lte('expense_date', endDate)
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching monthly expense totals:', error)
+        throw error
+      }
       
       // Initialize array with 12 months
       const monthlyTotals = Array(12).fill(0).map((_, index) => ({
@@ -682,7 +784,7 @@ export const expensesApi = {
       
       return monthlyTotals
     } catch (error) {
-      console.error('Error fetching monthly expense totals:', error)
+      console.error('Error in expensesApi.getMonthlyTotals:', error)
       return Array(12).fill(0).map((_, index) => ({
         month: index + 1,
         total: 0
@@ -706,10 +808,13 @@ export const expensesApi = {
         .or(`title.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%`)
         .order('expense_date', { ascending: false })
       
-      if (error) throw error
+      if (error) {
+        console.error('Error searching expenses:', error)
+        throw error
+      }
       return data || []
     } catch (error) {
-      console.error('Error searching expenses:', error)
+      console.error('Error in expensesApi.search:', error)
       return []
     }
   },
@@ -735,10 +840,13 @@ export const expensesApi = {
         .lte('expense_date', endDate)
         .order('expense_date', { ascending: false })
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching tax deductible expenses:', error)
+        throw error
+      }
       return data || []
     } catch (error) {
-      console.error('Error fetching tax deductible expenses:', error)
+      console.error('Error in expensesApi.getTaxDeductible:', error)
       return []
     }
   }

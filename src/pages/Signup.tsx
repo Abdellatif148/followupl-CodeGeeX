@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, User, CheckCircle, X } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { auth } from '../lib/supabase'
 import { useNavigate, Link } from 'react-router-dom'
 import DarkModeToggle from '../components/DarkModeToggle'
 import GoogleAuthButton from '../components/GoogleAuthButton'
 import { useAuthAnalytics } from '../hooks/useAnalytics'
+import { useAuth } from '../hooks/useAuth'
 
 interface PasswordStrength {
   score: number
@@ -15,6 +16,7 @@ interface PasswordStrength {
 
 export default function Signup() {
   const { trackSignup } = useAuthAnalytics()
+  const { user } = useAuth()
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -35,7 +37,6 @@ export default function Signup() {
   useEffect(() => {
     // Check if user is already logged in
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         // Check if language is selected
         const hasSelectedLanguage = localStorage.getItem('followuply-language-selected')
@@ -46,23 +47,11 @@ export default function Signup() {
         }
       }
     }
-    checkUser()
-
-    // Listen for auth state changes (for OAuth redirects)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // Check if language is selected
-        const hasSelectedLanguage = localStorage.getItem('followuply-language-selected')
-        if (hasSelectedLanguage) {
-          navigate('/dashboard')
-        } else {
-          navigate('/language-selection')
-        }
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [navigate])
+    
+    if (user) {
+      checkUser()
+    }
+  }, [user, navigate])
 
   const calculatePasswordStrength = (password: string): PasswordStrength => {
     let score = 0
@@ -132,15 +121,13 @@ export default function Signup() {
     setError('')
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: formData.email.trim(),
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.fullName.trim()
-          }
+      const { data, error } = await auth.signUp(
+        formData.email,
+        formData.password,
+        {
+          full_name: formData.fullName.trim()
         }
-      })
+      )
 
       if (error) {
         if (error.message.includes('already registered')) {

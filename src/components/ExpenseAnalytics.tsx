@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PieChart, BarChart, Calendar, DollarSign } from 'lucide-react'
 import { expensesApi } from '../lib/database'
-import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 import { useCurrency } from '../hooks/useCurrency'
 
 interface ExpenseAnalyticsProps {
@@ -36,6 +36,7 @@ export default function ExpenseAnalytics({
 }: ExpenseAnalyticsProps) {
   const { t } = useTranslation()
   const { formatCurrency } = useCurrency()
+  const { user: currentUser } = useAuth()
   const [loading, setLoading] = useState(true)
   const [categoryTotals, setCategoryTotals] = useState<CategoryTotal[]>([])
   const [clientTotals, setClientTotals] = useState<ClientTotal[]>([])
@@ -76,7 +77,7 @@ export default function ExpenseAnalytics({
 
   useEffect(() => {
     const loadAnalytics = async () => {
-      if (!userId) return
+      if (!userId || !currentUser) return
 
       try {
         setLoading(true)
@@ -138,7 +139,7 @@ export default function ExpenseAnalytics({
     }
 
     loadAnalytics()
-  }, [userId, period, year, month])
+  }, [userId, currentUser, period, year, month])
 
   const getCategoryLabel = (categoryValue: string) => {
     const category = categories.find(cat => cat.value === categoryValue)

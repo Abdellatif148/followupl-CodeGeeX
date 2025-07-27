@@ -5,7 +5,7 @@ import {
   Home, Users, Bell, FileText, Settings, LogOut, Menu, X,
   User, Search, Plus, DollarSign
 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 import DarkModeToggle from './DarkModeToggle'
 import NotificationCenter from './NotificationCenter'
 import GlobalSearch from './GlobalSearch'
@@ -20,8 +20,8 @@ export default function Layout({ children }: LayoutProps) {
   const { t } = useTranslation()
   const analytics = useAnalytics()
   const { trackLogout } = useAuthAnalytics()
+  const { user, signOut } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotifications, setShowNotifications] = useState(false)
@@ -39,10 +39,7 @@ export default function Layout({ children }: LayoutProps) {
   ]
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-      
+    const loadUserData = async () => {
       if (user) {
         // Get user profile
         try {
@@ -62,14 +59,14 @@ export default function Layout({ children }: LayoutProps) {
       }
     }
 
-    getUser()
-  }, [])
+    loadUserData()
+  }, [user])
 
   const handleSignOut = async () => {
     // Track logout event
     trackLogout()
     
-    await supabase.auth.signOut()
+    await signOut()
     // Clear language selection flag
     localStorage.removeItem('followuply-language-selected')
     navigate('/login')

@@ -41,8 +41,8 @@ function App() {
           <Route path="/terms" element={<TermsOfService />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/support" element={<Support />} />
-        
-        {/* Protected Routes */}
+          
+          {/* Protected Routes */}
           <Route path="/language-selection" element={
             <ProtectedRoute>
               <LanguageSelection />

@@ -4,15 +4,15 @@ import { Link } from 'react-router-dom'
 import { Calendar, Download, Filter, ArrowLeft } from 'lucide-react'
 import Layout from '../components/Layout'
 import ExpenseAnalytics from '../components/ExpenseAnalytics'
-import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 import { expensesApi } from '../lib/database'
 import { useCurrency } from '../hooks/useCurrency'
 
 export default function ExpenseReports() {
   const { t } = useTranslation()
   const { formatCurrency } = useCurrency()
+  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
   const [period, setPeriod] = useState<'month' | 'quarter' | 'year'>('month')
   const [year, setYear] = useState(new Date().getFullYear())
   const [month, setMonth] = useState(new Date().getMonth() + 1)
@@ -20,15 +20,15 @@ export default function ExpenseReports() {
 
   useEffect(() => {
     const loadUser = async () => {
+      if (!user) {
+        setLoading(false)
+        return
+      }
+      
       try {
         setLoading(true)
-        const { data: { user } } = await supabase.auth.getUser()
-        setUser(user)
-        
-        if (user) {
-          const expensesData = await expensesApi.getAll(user.id)
-          setExpenses(expensesData)
-        }
+        const expensesData = await expensesApi.getAll(user.id)
+        setExpenses(expensesData)
       } catch (error) {
         console.error('Error loading user:', error)
       } finally {
@@ -37,7 +37,7 @@ export default function ExpenseReports() {
     }
 
     loadUser()
-  }, [])
+  }, [user])
 
   const handlePeriodChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setPeriod(e.target.value as 'month' | 'quarter' | 'year')

@@ -6,10 +6,12 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 // Validate environment variables
 if (!supabaseUrl || supabaseUrl === 'your_supabase_url_here') {
+  console.error('❌ Missing VITE_SUPABASE_URL environment variable')
   throw new Error('Missing or invalid VITE_SUPABASE_URL environment variable. Please check your .env file.')
 }
 
 if (!supabaseAnonKey || supabaseAnonKey === 'your_supabase_anon_key_here') {
+  console.error('❌ Missing VITE_SUPABASE_ANON_KEY environment variable')
   throw new Error('Missing or invalid VITE_SUPABASE_ANON_KEY environment variable. Please check your .env file.')
 }
 
@@ -19,6 +21,11 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: true,
     flowType: 'pkce'
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'followuply-web'
+    }
   }
 })
 
@@ -31,7 +38,8 @@ export const auth = {
         email: email.trim().toLowerCase(),
         password,
         options: {
-          data: userData
+          data: userData,
+          emailRedirectTo: `${window.location.origin}/dashboard`
         }
       })
       return { data, error }
@@ -168,4 +176,25 @@ export const validatePassword = (password: string) => {
     errors,
     strength: errors.length === 0 ? 'strong' : errors.length <= 2 ? 'medium' : 'weak'
   }
+}
+
+// Connection test function
+export const testConnection = async () => {
+  try {
+    const { data, error } = await supabase.from('profiles').select('count').limit(1)
+    if (error) {
+      console.error('❌ Supabase connection test failed:', error)
+      return false
+    }
+    console.log('✅ Supabase connection successful')
+    return true
+  } catch (error) {
+    console.error('❌ Supabase connection test error:', error)
+    return false
+  }
+}
+
+// Initialize connection test in development
+if (import.meta.env.DEV) {
+  testConnection()
 }

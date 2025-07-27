@@ -7,8 +7,9 @@ import {
 } from 'lucide-react'
 import Layout from '../components/Layout'
 import { dashboardApi } from '../lib/database'
-import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 import { useCurrency } from '../hooks/useCurrency'
+import { formatDate } from '../utils/dateHelpers'
 
 interface DashboardStats {
   activeClients: number
@@ -27,21 +28,21 @@ interface DashboardStats {
 
 export default function Dashboard() {
   const { t } = useTranslation()
+  const { user } = useAuth()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
   const { formatCurrency } = useCurrency()
 
   useEffect(() => {
     const loadDashboard = async () => {
+      if (!user) {
+        setLoading(false)
+        return
+      }
+      
       try {
-        const { data: { user } } = await supabase.auth.getUser()
-        setUser(user)
-        
-        if (user) {
-          const dashboardStats = await dashboardApi.getStats(user.id)
-          setStats(dashboardStats)
-        }
+        const dashboardStats = await dashboardApi.getStats(user.id)
+        setStats(dashboardStats)
       } catch (error) {
         console.error('Error loading dashboard:', error)
       } finally {
@@ -50,7 +51,9 @@ export default function Dashboard() {
     }
 
     loadDashboard()
-  }, [])
+  }, [user])
+
+  const userName = user?.user_metadata?.full_name?.split(' ')[0] || 'there'
 
   if (loading) {
     return (
@@ -68,16 +71,6 @@ export default function Dashboard() {
       </Layout>
     )
   }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    })
-  }
-
-  const userName = user?.user_metadata?.full_name?.split(' ')[0] || 'there'
 
   return (
     <Layout>

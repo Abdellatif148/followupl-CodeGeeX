@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react'
 import Layout from '../components/Layout'
 import ExpenseForm from '../components/ExpenseForm'
 import { expensesApi } from '../lib/database'
+import { handleSupabaseError } from '../utils/errorHandler'
 import { Expense } from '../types/database'
 
 export default function EditExpense() {
@@ -29,7 +30,8 @@ export default function EditExpense() {
         setExpense(expenseData)
       } catch (err) {
         console.error('Error loading expense:', err)
-        setError('Failed to load expense')
+        const appError = handleSupabaseError(err)
+        setError(appError.message)
       } finally {
         setLoading(false)
       }

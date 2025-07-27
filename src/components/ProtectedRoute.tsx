@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
-import { User } from '@supabase/supabase-js'
+import { useAuth } from '../hooks/useAuth'
 import { useAuthAnalytics } from '../hooks/useAnalytics'
+import { supabase } from '../lib/supabase'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -10,25 +10,15 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { setUserProfile } = useAuthAnalytics()
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { user, loading, isAuthenticated } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser()
-      
-      // If there's an error or no user, clear any stale session data
-      if (error || !user) {
-        await supabase.auth.signOut()
-        setUser(null)
-        setLoading(false)
+    const handleAuthenticatedUser = async () => {
+      if (!isAuthenticated || !user) {
         navigate('/login')
         return
       }
-      
-      setUser(user)
-      setLoading(false)
 
       // Set user properties for analytics
       try {
@@ -47,58 +37,34 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         console.error('Error setting user analytics properties:', error)
       }
 
-      // Check if user has selected language (only for new users)
+      // Check language selection for new users
       const hasSelectedLanguage = localStorage.getItem('followuply-language-selected')
-      
-      // Only redirect to language selection if:
-      // 1. No language selected AND
-      // 2. Not already on language selection page AND  
-      // 3. User just signed up (check if they have a profile)
+
       if (!hasSelectedLanguage && window.location.pathname !== '/language-selection') {
-        // Check if this is a new user by looking for profile
         try {
           const { data: profile } = await supabase
             .from('profiles')
             .select('id')
             .eq('id', user.id)
             .maybeSingle()
-          
-          // If no profile exists, this is a new user - redirect to language selection
+
           if (!profile) {
             navigate('/language-selection')
             return
           } else {
-            // Existing user without language preference - set default
             localStorage.setItem('followuply-language-selected', 'true')
           }
         } catch (error) {
           console.error('Error checking user profile:', error)
-          // On error, assume existing user and set default language
           localStorage.setItem('followuply-language-selected', 'true')
         }
       }
     }
 
-    getUser()
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || !session) {
-        navigate('/login')
-      } else if (event === 'SIGNED_IN' && session) {
-        setUser(session.user)
-        
-        // For OAuth sign-ins, check if new user
-        const hasSelectedLanguage = localStorage.getItem('followuply-language-selected')
-        if (!hasSelectedLanguage) {
-          // This could be a new OAuth user, redirect to language selection
-          navigate('/language-selection')
-        }
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [navigate])
+    if (!loading) {
+      handleAuthenticatedUser()
+    }
+  }, [user, isAuthenticated, loading, navigate, setUserProfile])
 
   if (loading) {
     return (
@@ -111,7 +77,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     )
   }
 
-  if (!user) {
+  if (!isAuthenticated) {
     return null
   }
 

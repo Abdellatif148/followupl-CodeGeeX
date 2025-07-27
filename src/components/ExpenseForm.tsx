@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { expensesApi, clientsApi } from '../lib/database'
-import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 import { useCurrency } from '../hooks/useCurrency'
 import { Expense, Client } from '../types/database'
+import { handleSupabaseError } from '../utils/errorHandler'
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react'
 
 interface ExpenseFormProps {
@@ -15,6 +16,7 @@ interface ExpenseFormProps {
 export default function ExpenseForm({ expenseId, onSuccess, onCancel }: ExpenseFormProps) {
   const { t } = useTranslation()
   const { getAvailableCurrencies } = useCurrency()
+  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [clients, setClients] = useState<Client[]>([])
   const [notification, setNotification] = useState<{
@@ -71,41 +73,42 @@ export default function ExpenseForm({ expenseId, onSuccess, onCancel }: ExpenseF
   // Load clients and expense data if editing
   useEffect(() => {
     const loadData = async () => {
+      if (!user) {
+        setLoading(false)
+        return
+      }
+      
       try {
         setLoading(true)
+
+        // Load clients
+        const clientsData = await clientsApi.getAll(user.id)
+        setClients(clientsData)
         
-        // Get user
-        const { data: { user } } = await supabase.auth.getUser()
-        
-        if (user) {
-          // Load clients
-          const clientsData = await clientsApi.getAll(user.id)
-          setClients(clientsData)
-          
-          // Load expense if editing
-          if (expenseId) {
-            const expenseData = await expensesApi.getById(expenseId)
-            setFormData({
-              title: expenseData.title,
-              description: expenseData.description || '',
-              amount: expenseData.amount,
-              currency: expenseData.currency,
-              category: expenseData.category,
-              subcategory: expenseData.subcategory || '',
-              expense_date: new Date(expenseData.expense_date).toISOString().split('T')[0],
-              client_id: expenseData.client_id,
-              payment_method: expenseData.payment_method || '',
-              tax_deductible: expenseData.tax_deductible,
-              status: expenseData.status,
-              tags: expenseData.tags || []
-            })
-          }
+        // Load expense if editing
+        if (expenseId) {
+          const expenseData = await expensesApi.getById(expenseId)
+          setFormData({
+            title: expenseData.title,
+            description: expenseData.description || '',
+            amount: expenseData.amount,
+            currency: expenseData.currency,
+            category: expenseData.category,
+            subcategory: expenseData.subcategory || '',
+            expense_date: new Date(expenseData.expense_date).toISOString().split('T')[0],
+            client_id: expenseData.client_id,
+            payment_method: expenseData.payment_method || '',
+            tax_deductible: expenseData.tax_deductible,
+            status: expenseData.status,
+            tags: expenseData.tags || []
+          })
         }
       } catch (error) {
         console.error('Error loading data:', error)
+        const appError = handleSupabaseError(error)
         setNotification({
           type: 'error',
-          message: 'Failed to load data. Please try again.'
+          message: appError.message
         })
       } finally {
         setLoading(false)
@@ -113,7 +116,7 @@ export default function ExpenseForm({ expenseId, onSuccess, onCancel }: ExpenseF
     }
     
     loadData()
-  }, [expenseId])
+  }, [expenseId, user])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target
@@ -182,41 +185,37 @@ export default function ExpenseForm({ expenseId, onSuccess, onCancel }: ExpenseF
     try {
       setLoading(true)
       setNotification(null)
-      
-      // Get user
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (user) {
-        const expenseData = {
-          ...formData,
-          user_id: user.id,
-          amount: parseFloat(formData.amount.toString()),
-          client_id: formData.client_id || null
-        }
-        
-        if (expenseId) {
-          await expensesApi.update(expenseId, expenseData)
-          setNotification({
-            type: 'success',
-            message: 'Expense updated successfully!'
-          })
-        } else {
-          await expensesApi.create(expenseData)
-          setNotification({
-            type: 'success',
-            message: 'Expense created successfully!'
-          })
-        }
-        
-        setTimeout(() => {
-          onSuccess()
-        }, 1500)
+
+      const expenseData = {
+        ...formData,
+        user_id: user!.id,
+        amount: parseFloat(formData.amount.toString()),
+        client_id: formData.client_id || null
       }
+      
+      if (expenseId) {
+        await expensesApi.update(expenseId, expenseData)
+        setNotification({
+          type: 'success',
+          message: 'Expense updated successfully!'
+        })
+      } else {
+        await expensesApi.create(expenseData)
+        setNotification({
+          type: 'success',
+          message: 'Expense created successfully!'
+        })
+      }
+      
+      setTimeout(() => {
+        onSuccess()
+      }, 1500)
     } catch (error) {
       console.error('Error saving expense:', error)
+      const appError = handleSupabaseError(error)
       setNotification({
         type: 'error',
-        message: 'Failed to save expense. Please try again.'
+        message: appError.message
       })
     } finally {
       setLoading(false)

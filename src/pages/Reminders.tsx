@@ -7,9 +7,11 @@ import Layout from '../components/Layout'
 import ReminderForm from '../components/ReminderForm'
 import Table from '../components/Table'
 import { remindersApi, clientsApi } from '../lib/database'
-import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
+import { formatDueDate } from '../utils/dateHelpers'
 
 export default function Reminders() {
+  const { user } = useAuth()
   const [reminders, setReminders] = useState<any[]>([])
   const [clients, setClients] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -17,25 +19,24 @@ export default function Reminders() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'done'>('all')
   const [showForm, setShowForm] = useState(false)
   const [editingReminder, setEditingReminder] = useState<any>(null)
-  const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [user])
 
   const loadData = async () => {
+    if (!user) {
+      setLoading(false)
+      return
+    }
+    
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-      
-      if (user) {
-        const [remindersData, clientsData] = await Promise.all([
-          remindersApi.getAll(user.id),
-          clientsApi.getAll(user.id)
-        ])
-        setReminders(remindersData)
-        setClients(clientsData)
-      }
+      const [remindersData, clientsData] = await Promise.all([
+        remindersApi.getAll(user.id),
+        clientsApi.getAll(user.id)
+      ])
+      setReminders(remindersData)
+      setClients(clientsData)
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
@@ -65,25 +66,6 @@ export default function Reminders() {
       default: 
         return <AlertTriangle className="w-5 h-5 text-gray-500" />
     }
-  }
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffTime = date.getTime() - now.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    
-    if (diffDays === 0) return 'Today'
-    if (diffDays === 1) return 'Tomorrow'
-    if (diffDays === -1) return 'Yesterday'
-    if (diffDays < 0) return `${Math.abs(diffDays)} days ago`
-    if (diffDays < 7) return `In ${diffDays} days`
-    
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-    })
   }
 
   const toggleStatus = async (reminderId: string, currentStatus: string) => {
@@ -167,7 +149,7 @@ export default function Reminders() {
       render: (value: string, row: any) => (
         <div className="flex items-center space-x-2">
           <Calendar className="w-4 h-4 text-gray-400" />
-          <span>{formatDate(value || row.datetime)}</span>
+          <span>{formatDueDate(value || row.datetime)}</span>
         </div>
       )
     },

@@ -8,17 +8,19 @@ import {
 } from 'lucide-react'
 import Layout from '../components/Layout'
 import { expensesApi } from '../lib/database'
-import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 import { useCurrency } from '../hooks/useCurrency'
+import { formatDate } from '../utils/dateHelpers'
+import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
 import { Expense } from '../types/database'
 
 export default function Expenses() {
   const { t } = useTranslation()
   const { formatCurrency } = useCurrency()
+  const { user } = useAuth()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [user, setUser] = useState<any>(null)
   const [sortField, setSortField] = useState('expense_date')
   const [sortDirection, setSortDirection] = useState('desc')
   const [searchQuery, setSearchQuery] = useState('')
@@ -49,26 +51,28 @@ export default function Expenses() {
 
   useEffect(() => {
     const loadExpenses = async () => {
+      if (!user) {
+        setLoading(false)
+        return
+      }
+      
       try {
         setLoading(true)
         setError(null)
-        const { data: { user } } = await supabase.auth.getUser()
-        setUser(user)
         
-        if (user) {
-          const expensesData = await expensesApi.getAll(user.id)
-          setExpenses(Array.isArray(expensesData) ? expensesData : [])
-        }
+        const expensesData = await expensesApi.getAll(user.id)
+        setExpenses(Array.isArray(expensesData) ? expensesData : [])
       } catch (error) {
         console.error('Error loading expenses:', error)
-        setError('Failed to load expenses. Please try again.')
+        const appError = handleSupabaseError(error)
+        setError(appError.message)
       } finally {
         setLoading(false)
       }
     }
 
     loadExpenses()
-  }, [])
+  }, [user])
 
   const handleSort = (field: string) => {
     if (field === sortField) {
@@ -114,6 +118,7 @@ export default function Expenses() {
       try {
         await expensesApi.delete(id)
         setExpenses(expenses.filter(expense => expense.id !== id))
+       showSuccessToast('Expense deleted successfully')
       } catch (error) {
         console.error('Error deleting expense:', error)
         alert('Failed to delete expense. Please try again.')
@@ -165,7 +170,8 @@ export default function Expenses() {
       document.body.removeChild(link)
     } catch (error) {
       console.error('Error exporting CSV:', error)
-      alert('Failed to export expenses. Please try again.')
+      showErrorToast('Failed to export expenses. Please try again.')
+      showErrorToast(appError.message)
     }
   }
 
@@ -245,19 +251,6 @@ export default function Expenses() {
   const totalTaxDeductible = filteredExpenses
     .filter(expense => expense?.tax_deductible)
     .reduce((sum, expense) => sum + (expense?.amount || 0), 0)
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return ''
-    try {
-      return new Date(dateString).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      })
-    } catch (e) {
-      return dateString
-    }
-  }
 
   const getCategoryLabel = (categoryValue: string) => {
     if (!categoryValue) return ''

@@ -8,6 +8,7 @@ import {
 import Layout from '../components/Layout'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { profilesApi, currencyUtils } from '../lib/database'
+import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { useCurrency } from '../hooks/useCurrency'
@@ -16,7 +17,7 @@ import { useAnalytics } from '../hooks/useAnalytics'
 export default function Settings() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const [user, setUser] = useState<any>(null)
+  const { user, signOut } = useAuth()
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -48,33 +49,33 @@ export default function Settings() {
 
   useEffect(() => {
     loadUserData()
-  }, [])
+  }, [user])
 
   const loadUserData = async () => {
+    if (!user) {
+      setLoading(false)
+      return
+    }
+    
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
+      const profileData = await profilesApi.get(user.id)
       
-      if (user) {
-        const profileData = await profilesApi.get(user.id)
-        
-        if (profileData) {
-          setProfile(profileData)
-          setFormData({
-            full_name: profileData.full_name || '',
-            currency: profileData.currency || 'USD',
-            timezone: profileData.timezone || 'UTC',
-            language: profileData.language || i18n.language || 'en'
-          })
-        } else {
-          // Profile doesn't exist yet, use default values
-          setFormData({
-            full_name: '',
-            currency: 'USD',
-            timezone: 'UTC',
-            language: i18n.language || 'en'
-          })
-        }
+      if (profileData) {
+        setProfile(profileData)
+        setFormData({
+          full_name: profileData.full_name || '',
+          currency: profileData.currency || 'USD',
+          timezone: profileData.timezone || 'UTC',
+          language: profileData.language || i18n.language || 'en'
+        })
+      } else {
+        // Profile doesn't exist yet, use default values
+        setFormData({
+          full_name: '',
+          currency: 'USD',
+          timezone: 'UTC',
+          language: i18n.language || 'en'
+        })
       }
     } catch (error) {
       console.error('Error loading user data:', error)
@@ -252,21 +253,15 @@ export default function Settings() {
       // Step 2: Delete the authentication account
       try {
         // Use the user delete method (more reliable for self-deletion)
-        const { error: deleteError } = await supabase.auth.deleteUser()
+        const { error: deleteError } = await signOut()
         
         if (deleteError) {
           console.error('❌ Auth deletion failed:', deleteError.message)
-          // Force sign out if deletion fails
-          await supabase.auth.signOut()
-          console.log('🔐 Forced sign out due to deletion failure')
         } else {
-          console.log('✅ Authentication account deleted successfully')
+          console.log('✅ User signed out successfully')
         }
       } catch (error) {
         console.error('❌ Auth deletion error:', error)
-        // Force sign out as fallback
-        await supabase.auth.signOut()
-        console.log('🔐 Forced sign out due to error')
       }
 
       // Step 3: Clear all local data
@@ -288,7 +283,7 @@ export default function Settings() {
       
       // Force sign out for security even on error
       try {
-        await supabase.auth.signOut()
+        await signOut()
         localStorage.clear()
         sessionStorage.clear()
         setTimeout(() => {

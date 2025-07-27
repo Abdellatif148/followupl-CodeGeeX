@@ -10,6 +10,7 @@ export default function AddExpense() {
   const navigate = useNavigate()
 
   const handleSuccess = () => {
+    showSuccessToast('Expense added successfully')
     navigate('/expenses')
   }
 

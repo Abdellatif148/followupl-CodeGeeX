@@ -5,11 +5,9 @@ import { auth } from '../lib/supabase'
 import { useNavigate, Link } from 'react-router-dom'
 import DarkModeToggle from '../components/DarkModeToggle'
 import GoogleAuthButton from '../components/GoogleAuthButton'
-import { useAuthAnalytics } from '../hooks/useAnalytics'
 import { useAuth } from '../hooks/useAuth'
 
 export default function Login() {
-  const { trackLogin } = useAuthAnalytics()
   const { user } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -57,9 +55,6 @@ export default function Login() {
           setError(error.message)
         }
       } else if (data.user) {
-        // Track successful login
-        trackLogin('email')
-        
         // For login, go directly to dashboard (language already selected)
         navigate('/dashboard')
       }
@@ -71,8 +66,6 @@ export default function Login() {
   }
 
   const handleGoogleSuccess = () => {
-    // Track Google login
-    trackLogin('google')
     // OAuth will handle the redirect automatically
   }
 

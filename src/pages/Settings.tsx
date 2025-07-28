@@ -12,7 +12,7 @@ import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { useCurrency } from '../hooks/useCurrency'
-import { useAnalytics } from '../hooks/useAnalytics'
+import { handleSupabaseError, showErrorToast, showSuccessToast } from '../utils/errorHandler'
 
 export default function Settings() {
   const { t, i18n } = useTranslation()
@@ -32,7 +32,6 @@ export default function Settings() {
   } | null>(null)
   const { isDarkMode, toggleDarkMode } = useDarkMode()
   const { currency, updateCurrency, refreshCurrency } = useCurrency()
-  const analytics = useAnalytics()
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -158,13 +157,11 @@ export default function Settings() {
       updateCurrency(formData.currency)
       
       await loadUserData()
-      showNotification('success', 'Profile updated successfully!')
-      
-      // Track settings update
-      analytics.trackFeatureUsage('settings', 'profile_update')
+      showSuccessToast('Profile updated successfully!')
     } catch (error) {
       console.error('Error saving profile:', error)
-      showNotification('error', 'Failed to update profile. Please try again.')
+      const appError = handleSupabaseError(error)
+      showErrorToast(appError.message)
     } finally {
       setSaving(false)
     }
@@ -194,13 +191,11 @@ export default function Settings() {
         newPassword: '',
         confirmPassword: ''
       })
-      showNotification('success', 'Password updated successfully!')
-      
-      // Track password change
-      analytics.trackFeatureUsage('settings', 'password_change')
+      showSuccessToast('Password updated successfully!')
     } catch (error) {
       console.error('Error changing password:', error)
-      showNotification('error', 'Failed to update password. Please try again.')
+      const appError = handleSupabaseError(error)
+      showErrorToast(appError.message)
     } finally {
       setSaving(false)
     }
@@ -270,7 +265,7 @@ export default function Settings() {
       console.log('🧹 Cleared all local storage')
       
       // Show success message
-      showNotification('success', 'Account permanently deleted. You will be redirected shortly.')
+      showSuccessToast('Account permanently deleted. You will be redirected shortly.')
       
       // Navigate to home page
       setTimeout(() => {
@@ -279,7 +274,8 @@ export default function Settings() {
       
     } catch (error) {
       console.error('❌ Critical error during account deletion:', error)
-      showNotification('error', 'Account deletion failed. Please contact support.')
+      const appError = handleSupabaseError(error)
+      showErrorToast(appError.message)
       
       // Force sign out for security even on error
       try {

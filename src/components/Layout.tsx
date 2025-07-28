@@ -10,7 +10,7 @@ import DarkModeToggle from './DarkModeToggle'
 import NotificationCenter from './NotificationCenter'
 import GlobalSearch from './GlobalSearch'
 import { notificationsApi, profilesApi } from '../lib/database'
-import { useAnalytics, useAuthAnalytics } from '../hooks/useAnalytics'
+import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -18,8 +18,6 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const { t } = useTranslation()
-  const analytics = useAnalytics()
-  const { trackLogout } = useAuthAnalytics()
   const { user, signOut } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profile, setProfile] = useState<any>(null)
@@ -47,6 +45,8 @@ export default function Layout({ children }: LayoutProps) {
           setProfile(profileData)
         } catch (error) {
           console.error('Error fetching profile:', error)
+          const appError = handleSupabaseError(error)
+          showErrorToast(appError.message)
         }
 
         // Get unread notifications count
@@ -55,6 +55,8 @@ export default function Layout({ children }: LayoutProps) {
           setUnreadCount(notifications.length)
         } catch (error) {
           console.error('Error fetching notifications:', error)
+          const appError = handleSupabaseError(error)
+          showErrorToast(appError.message)
         }
       }
     }
@@ -63,13 +65,14 @@ export default function Layout({ children }: LayoutProps) {
   }, [user])
 
   const handleSignOut = async () => {
-    // Track logout event
-    trackLogout()
-    
-    await signOut()
-    // Clear language selection flag
-    localStorage.removeItem('followuply-language-selected')
-    navigate('/login')
+    try {
+      await signOut()
+      navigate('/login')
+    } catch (error) {
+      console.error('Error signing out:', error)
+      const appError = handleSupabaseError(error)
+      showErrorToast(appError.message)
+    }
   }
 
   const isCurrentPage = (href: string) => {
@@ -102,7 +105,6 @@ export default function Layout({ children }: LayoutProps) {
                 to={item.href}
                 onClick={() => {
                   setSidebarOpen(false)
-                  analytics.trackClick(`nav_${item.name.toLowerCase()}`, 'navigation')
                 }}
                 className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
                   isCurrentPage(item.href)
@@ -143,7 +145,6 @@ export default function Layout({ children }: LayoutProps) {
               <Link
                 key={item.name}
                 to={item.href}
-                onClick={() => analytics.trackClick(`nav_${item.name.toLowerCase()}`, 'navigation')}
                 className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
                   isCurrentPage(item.href)
                     ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'

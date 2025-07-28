@@ -374,3 +374,22 @@ export type Expense = Database['public']['Tables']['expenses']['Row'] & {
 }
 export type ExpenseInsert = Database['public']['Tables']['expenses']['Insert']
 export type ExpenseUpdate = Database['public']['Tables']['expenses']['Update']
+
+// Extended types with relations
+export type ClientWithStats = Client & {
+  reminder_count?: number
+  invoice_count?: number
+  overdue_amount?: number
+}
+
+export type ReminderWithClient = Reminder & {
+  clients?: Pick<Client, 'id' | 'name' | 'platform'>
+}
+
+export type InvoiceWithClient = Invoice & {
+  clients?: Pick<Client, 'id' | 'name' | 'email' | 'platform'>
+}
+
+export type ExpenseWithClient = Expense & {
+  clients?: Pick<Client, 'id' | 'name' | 'platform'>
+}

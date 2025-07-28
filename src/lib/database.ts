@@ -5,7 +5,8 @@ import type {
   Invoice, InvoiceInsert, InvoiceUpdate,
   Profile, ProfileInsert, ProfileUpdate,
   Notification, NotificationInsert, NotificationUpdate,
-  Expense, ExpenseInsert, ExpenseUpdate
+  Expense, ExpenseInsert, ExpenseUpdate,
+  ReminderWithClient, InvoiceWithClient, ExpenseWithClient
 } from '../types/database'
 
 // Client operations
@@ -52,7 +53,10 @@ export const clientsApi = {
     try {
       const { data, error } = await supabase
         .from('clients')
-        .insert(client)
+        .insert({
+          ...client,
+          last_contact: new Date().toISOString()
+        })
         .select()
         .single()
       
@@ -71,7 +75,10 @@ export const clientsApi = {
     try {
       const { data, error } = await supabase
         .from('clients')
-        .update(updates)
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id)
         .select()
         .single()
@@ -110,7 +117,7 @@ export const clientsApi = {
         .from('clients')
         .select('*')
         .eq('user_id', userId)
-        .or(`name.ilike.%${query}%,email.ilike.%${query}%,notes.ilike.%${query}%`)
+        .or(`name.ilike.%${query}%,email.ilike.%${query}%,notes.ilike.%${query}%,company.ilike.%${query}%`)
         .order('created_at', { ascending: false })
       
       if (error) {
@@ -127,7 +134,7 @@ export const clientsApi = {
 
 // Reminder operations
 export const remindersApi = {
-  async getAll(userId: string) {
+  async getAll(userId: string): Promise<ReminderWithClient[]> {
     try {
       const { data, error } = await supabase
         .from('reminders')
@@ -153,7 +160,7 @@ export const remindersApi = {
     }
   },
 
-  async getUpcoming(userId: string, days: number = 7) {
+  async getUpcoming(userId: string, days: number = 7): Promise<ReminderWithClient[]> {
     try {
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + days)
@@ -207,7 +214,10 @@ export const remindersApi = {
     try {
       const { data, error } = await supabase
         .from('reminders')
-        .update(updates)
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id)
         .select()
         .single()
@@ -246,7 +256,8 @@ export const remindersApi = {
         .from('reminders')
         .update({ 
           status: 'completed',
-          completed_at: new Date().toISOString()
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .eq('id', id)
         .select()
@@ -266,7 +277,7 @@ export const remindersApi = {
 
 // Invoice operations
 export const invoicesApi = {
-  async getAll(userId: string) {
+  async getAll(userId: string): Promise<InvoiceWithClient[]> {
     try {
       const { data, error } = await supabase
         .from('invoices')
@@ -293,7 +304,7 @@ export const invoicesApi = {
     }
   },
 
-  async getOverdue(userId: string) {
+  async getOverdue(userId: string): Promise<InvoiceWithClient[]> {
     try {
       const today = new Date().toISOString().split('T')[0]
       
@@ -347,7 +358,10 @@ export const invoicesApi = {
     try {
       const { data, error } = await supabase
         .from('invoices')
-        .update(updates)
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id)
         .select()
         .single()
@@ -387,7 +401,8 @@ export const invoicesApi = {
         .update({ 
           status: 'paid',
           payment_date: new Date().toISOString(),
-          payment_method: paymentMethod
+          payment_method: paymentMethod,
+          updated_at: new Date().toISOString()
         })
         .eq('id', id)
         .select()
@@ -449,7 +464,10 @@ export const profilesApi = {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .update(updates)
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', userId)
         .select()
         .single()
@@ -564,7 +582,7 @@ export const notificationsApi = {
 
 // Expense operations
 export const expensesApi = {
-  async getAll(userId: string): Promise<Expense[]> {
+  async getAll(userId: string): Promise<ExpenseWithClient[]> {
     try {
       const { data, error } = await supabase
         .from('expenses')
@@ -590,7 +608,7 @@ export const expensesApi = {
     }
   },
 
-  async getById(id: string): Promise<Expense> {
+  async getById(id: string): Promise<ExpenseWithClient> {
     try {
       const { data, error } = await supabase
         .from('expenses')
@@ -639,7 +657,10 @@ export const expensesApi = {
     try {
       const { data, error } = await supabase
         .from('expenses')
-        .update(updates)
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', id)
         .select()
         .single()
@@ -792,7 +813,7 @@ export const expensesApi = {
     }
   },
 
-  async search(userId: string, query: string): Promise<Expense[]> {
+  async search(userId: string, query: string): Promise<ExpenseWithClient[]> {
     try {
       const { data, error } = await supabase
         .from('expenses')
@@ -819,7 +840,7 @@ export const expensesApi = {
     }
   },
 
-  async getTaxDeductible(userId: string, year: number): Promise<Expense[]> {
+  async getTaxDeductible(userId: string, year: number): Promise<ExpenseWithClient[]> {
     try {
       const startDate = `${year}-01-01`
       const endDate = `${year}-12-31`
@@ -882,15 +903,15 @@ export const dashboardApi = {
       const firstDayOfMonth = new Date(currentYear, currentMonth, 1).toISOString()
       const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).toISOString()
       
-      const currentMonthExpenses = expenses.filter((e: Expense) =>
+      const currentMonthExpenses = expenses.filter((e: any) =>
         e.expense_date >= firstDayOfMonth && e.expense_date <= lastDayOfMonth
       )
       
-      const totalMonthlyExpenses = currentMonthExpenses.reduce((sum: number, exp: Expense) => sum + (exp.amount || 0), 0)
+      const totalMonthlyExpenses = currentMonthExpenses.reduce((sum: number, exp: any) => sum + (exp.amount || 0), 0)
       
       // Get top expense category
       const categoryTotals: Record<string, number> = {}
-      currentMonthExpenses.forEach((expense: Expense) => {
+      currentMonthExpenses.forEach((expense: any) => {
         if (!categoryTotals[expense.category]) {
           categoryTotals[expense.category] = 0
         }

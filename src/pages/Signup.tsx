@@ -5,7 +5,6 @@ import { auth } from '../lib/supabase'
 import { useNavigate, Link } from 'react-router-dom'
 import DarkModeToggle from '../components/DarkModeToggle'
 import GoogleAuthButton from '../components/GoogleAuthButton'
-import { useAuthAnalytics } from '../hooks/useAnalytics'
 import { useAuth } from '../hooks/useAuth'
 
 interface PasswordStrength {
@@ -15,7 +14,6 @@ interface PasswordStrength {
 }
 
 export default function Signup() {
-  const { trackSignup } = useAuthAnalytics()
   const { user } = useAuth()
   const [formData, setFormData] = useState({
     fullName: '',
@@ -138,14 +136,8 @@ export default function Signup() {
       } else if (data.user) {
         // Check if email confirmation is required
         if (!data.session) {
-          // Track successful signup
-          trackSignup('email')
-          
           setError('Please check your email and click the confirmation link to complete your registration.')
         } else {
-          // Track successful signup
-          trackSignup('email')
-          
           // For new signups, go to language selection first
           navigate('/language-selection')
         }
@@ -158,8 +150,6 @@ export default function Signup() {
   }
 
   const handleGoogleSuccess = () => {
-    // Track Google signup
-    trackSignup('google')
     // OAuth will handle the redirect automatically
   }
 

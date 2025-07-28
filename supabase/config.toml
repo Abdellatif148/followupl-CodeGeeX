@@ -6,6 +6,11 @@ jwt_expiry = 3600
 enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10
 max_frequency = "1m0s"
+double_confirm_changes = true
+enable_confirmations = false
+secure_password_change = false
+otp_length = 6
+otp_expiry = 3600
 
 [auth.mfa]
 max_enrolled_factors = 10
@@ -18,11 +23,5 @@ verify_enabled = true
 enroll_enabled = false
 verify_enabled = false
 
-double_confirm_changes = true
-enable_confirmations = false
-secure_password_change = false
-otp_length = 6
-otp_expiry = 3600
-
 [auth.email.template]
-# ... other email template configs if you want
+# You can add email template settings here if needed

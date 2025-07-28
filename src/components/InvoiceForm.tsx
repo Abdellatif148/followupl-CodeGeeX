@@ -3,8 +3,7 @@ import { DollarSign, Calendar, FileText, User, Loader2, CheckCircle, AlertCircle
 import { invoicesApi, clientsApi } from '../lib/database'
 import { useAuth } from '../hooks/useAuth'
 import type { Client } from '../types/database'
-import { useBusinessAnalytics } from '../hooks/useAnalytics'
-import { handleSupabaseError } from '../utils/errorHandler'
+import { handleSupabaseError, showErrorToast, showSuccessToast } from '../utils/errorHandler'
 
 interface InvoiceFormProps {
   onSuccess?: () => void
@@ -13,7 +12,6 @@ interface InvoiceFormProps {
 }
 
 export default function InvoiceForm({ onSuccess, onCancel, editingInvoice }: InvoiceFormProps) {
-  const { trackInvoiceAction } = useBusinessAnalytics()
   const { user } = useAuth()
   const [clients, setClients] = useState<Client[]>([])
   const [formData, setFormData] = useState({
@@ -126,32 +124,10 @@ export default function InvoiceForm({ onSuccess, onCancel, editingInvoice }: Inv
 
       if (editingInvoice) {
         await invoicesApi.update(editingInvoice.id, invoiceData)
-        
-        // Track invoice update
-        trackInvoiceAction('update', {
-          amount: invoiceData.amount,
-          currency: invoiceData.currency,
-          status: invoiceData.status
-        })
-        
-        setNotification({
-          type: 'success',
-          message: 'Invoice updated successfully!'
-        })
+        showSuccessToast('Invoice updated successfully!')
       } else {
         await invoicesApi.create(invoiceData)
-        
-        // Track invoice creation
-        trackInvoiceAction('create', {
-          amount: invoiceData.amount,
-          currency: invoiceData.currency,
-          status: invoiceData.status
-        })
-        
-        setNotification({
-          type: 'success',
-          message: 'Invoice created successfully!'
-        })
+        showSuccessToast('Invoice created successfully!')
       }
 
       // Clear form if creating new
@@ -174,10 +150,7 @@ export default function InvoiceForm({ onSuccess, onCancel, editingInvoice }: Inv
     } catch (error) {
       console.error('Error saving invoice:', error)
       const appError = handleSupabaseError(error)
-      setNotification({
-        type: 'error',
-        message: appError.message
-      })
+      showErrorToast(appError.message)
     } finally {
       setIsSubmitting(false)
     }

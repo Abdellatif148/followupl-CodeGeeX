@@ -4,7 +4,7 @@ import { expensesApi, clientsApi } from '../lib/database'
 import { useAuth } from '../hooks/useAuth'
 import { useCurrency } from '../hooks/useCurrency'
 import { Expense, Client } from '../types/database'
-import { handleSupabaseError } from '../utils/errorHandler'
+import { handleSupabaseError, showErrorToast, showSuccessToast } from '../utils/errorHandler'
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react'
 
 interface ExpenseFormProps {
@@ -201,10 +201,7 @@ export default function ExpenseForm({ expenseId, onSuccess, onCancel }: ExpenseF
         })
       } else {
         await expensesApi.create(expenseData)
-        setNotification({
-          type: 'success',
-          message: 'Expense created successfully!'
-        })
+        showSuccessToast('Expense created successfully!')
       }
       
       setTimeout(() => {
@@ -213,10 +210,7 @@ export default function ExpenseForm({ expenseId, onSuccess, onCancel }: ExpenseF
     } catch (error) {
       console.error('Error saving expense:', error)
       const appError = handleSupabaseError(error)
-      setNotification({
-        type: 'error',
-        message: appError.message
-      })
+      showErrorToast(appError.message)
     } finally {
       setLoading(false)
     }

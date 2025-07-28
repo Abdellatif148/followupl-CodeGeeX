@@ -3,8 +3,7 @@ import { Calendar, Clock, FileText, User, Loader2, CheckCircle, AlertCircle } fr
 import { remindersApi, clientsApi } from '../lib/database'
 import { useAuth } from '../hooks/useAuth'
 import type { Client } from '../types/database'
-import { useBusinessAnalytics } from '../hooks/useAnalytics'
-import { handleSupabaseError } from '../utils/errorHandler'
+import { handleSupabaseError, showErrorToast, showSuccessToast } from '../utils/errorHandler'
 
 interface ReminderFormProps {
   onSuccess?: () => void
@@ -13,7 +12,6 @@ interface ReminderFormProps {
 }
 
 export default function ReminderForm({ onSuccess, onCancel, editingReminder }: ReminderFormProps) {
-  const { trackReminderAction } = useBusinessAnalytics()
   const { user } = useAuth()
   const [clients, setClients] = useState<Client[]>([])
   const [formData, setFormData] = useState({
@@ -122,32 +120,10 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
 
       if (editingReminder) {
         await remindersApi.update(editingReminder.id, reminderData)
-        
-        // Track reminder update
-        trackReminderAction('update', {
-          has_client: !!reminderData.client_id,
-          reminder_type: reminderData.reminder_type,
-          priority: reminderData.priority
-        })
-        
-        setNotification({
-          type: 'success',
-          message: 'Reminder updated successfully!'
-        })
+        showSuccessToast('Reminder updated successfully!')
       } else {
         await remindersApi.create(reminderData)
-        
-        // Track reminder creation
-        trackReminderAction('create', {
-          has_client: !!reminderData.client_id,
-          reminder_type: reminderData.reminder_type,
-          priority: reminderData.priority
-        })
-        
-        setNotification({
-          type: 'success',
-          message: 'Reminder created successfully!'
-        })
+        showSuccessToast('Reminder created successfully!')
       }
 
       // Clear form if creating new
@@ -169,10 +145,7 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
     } catch (error) {
       console.error('Error saving reminder:', error)
       const appError = handleSupabaseError(error)
-      setNotification({
-        type: 'error',
-        message: appError.message
-      })
+      showErrorToast(appError.message)
     } finally {
       setIsSubmitting(false)
     }

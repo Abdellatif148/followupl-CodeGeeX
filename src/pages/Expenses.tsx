@@ -10,8 +10,8 @@ import Layout from '../components/Layout'
 import { expensesApi } from '../lib/database'
 import { useAuth } from '../hooks/useAuth'
 import { useCurrency } from '../hooks/useCurrency'
+import { handleSupabaseError, showErrorToast, showSuccessToast } from '../utils/errorHandler'
 import { formatDate } from '../utils/dateHelpers'
-import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
 import { Expense } from '../types/database'
 
 export default function Expenses() {
@@ -118,10 +118,11 @@ export default function Expenses() {
       try {
         await expensesApi.delete(id)
         setExpenses(expenses.filter(expense => expense.id !== id))
-       showSuccessToast('Expense deleted successfully')
+        showSuccessToast('Expense deleted successfully')
       } catch (error) {
         console.error('Error deleting expense:', error)
-        alert('Failed to delete expense. Please try again.')
+        const appError = handleSupabaseError(error)
+        showErrorToast(appError.message)
       }
     }
   }
@@ -170,7 +171,7 @@ export default function Expenses() {
       document.body.removeChild(link)
     } catch (error) {
       console.error('Error exporting CSV:', error)
-      showErrorToast('Failed to export expenses. Please try again.')
+      const appError = handleSupabaseError(error)
       showErrorToast(appError.message)
     }
   }

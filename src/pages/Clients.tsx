@@ -10,13 +10,11 @@ import ClientForm from '../components/ClientForm'
 import { clientsApi } from '../lib/database'
 import { useAuth } from '../hooks/useAuth'
 import { useCurrency } from '../hooks/useCurrency'
-import { useBusinessAnalytics } from '../hooks/useAnalytics'
 import { formatDate } from '../utils/dateHelpers'
 import { handleSupabaseError, showErrorToast, showSuccessToast } from '../utils/errorHandler'
 import type { Client } from '../types/database'
 
 export default function Clients() {
-  const { trackClientAction } = useBusinessAnalytics()
   const { user } = useAuth()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
@@ -66,35 +64,19 @@ export default function Clients() {
   const handleEditClient = (client: Client) => {
     setEditingClient(client)
     setShowEditForm(true)
-    
-    // Track edit action
-    trackClientAction('edit_initiated', {
-      client_id: client.id,
-      has_company: !!client.company,
-      tags_count: client.tags?.length || 0
-    })
   }
 
   const handleDeleteClient = async (client: Client) => {
     if (window.confirm(`Are you sure you want to delete ${client.name}? This action cannot be undone.`)) {
       try {
         await clientsApi.delete(client.id)
-        
-        // Track delete action
-        trackClientAction('delete', {
-          client_id: client.id,
-          had_company: !!client.company,
-          tags_count: client.tags?.length || 0
-        })
-        
-        // Show success toast
-       showSuccessToast('Client deleted successfully')
+        showSuccessToast('Client deleted successfully')
         
         loadClients()
       } catch (error) {
         console.error('Error deleting client:', error)
-      const appError = handleSupabaseError(error)
-      showErrorToast(appError.message)
+        const appError = handleSupabaseError(error)
+        showErrorToast(appError.message)
       }
     }
   }
@@ -104,15 +86,6 @@ export default function Clients() {
     
     try {
       await clientsApi.update(client.id, { status: newStatus })
-      
-      // Track status change
-      trackClientAction('status_change', {
-        client_id: client.id,
-        old_status: client.status,
-        new_status: newStatus
-      })
-      
-      // Show success toast
       showSuccessToast(`Client marked as ${newStatus}`)
       
       loadClients()

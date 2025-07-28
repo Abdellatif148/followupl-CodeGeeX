@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Bell, X, Check, AlertCircle, Clock, CheckCircle } from 'lucide-react'
 import { notificationsApi } from '../lib/database'
 import { useAuth } from '../hooks/useAuth'
+import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
 import { formatRelativeDate } from '../utils/dateHelpers'
 
 interface Notification {
@@ -50,6 +51,8 @@ export default function NotificationCenter({
       onUnreadCountChange(unreadCount)
     } catch (error) {
       console.error('Error loading notifications:', error)
+      const appError = handleSupabaseError(error)
+      showErrorToast(appError.message)
     } finally {
       setLoading(false)
     }
@@ -64,6 +67,8 @@ export default function NotificationCenter({
       onUnreadCountChange(Math.max(0, unreadCount - 1))
     } catch (error) {
       console.error('Error marking notification as read:', error)
+     const appError = handleSupabaseError(error)
+     showErrorToast(appError.message)
     }
   }
 
@@ -76,6 +81,8 @@ export default function NotificationCenter({
       onUnreadCountChange(0)
     } catch (error) {
       console.error('Error marking all notifications as read:', error)
+     const appError = handleSupabaseError(error)
+     showErrorToast(appError.message)
     }
   }
 

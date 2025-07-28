@@ -4,6 +4,7 @@ import { PieChart, BarChart, Calendar, DollarSign } from 'lucide-react'
 import { expensesApi } from '../lib/database'
 import { useAuth } from '../hooks/useAuth'
 import { useCurrency } from '../hooks/useCurrency'
+import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
 
 interface ExpenseAnalyticsProps {
   userId: string
@@ -133,6 +134,8 @@ export default function ExpenseAnalytics({
         setTaxDeductibleTotal(taxDeductible)
       } catch (error) {
         console.error('Error loading analytics:', error)
+        const appError = handleSupabaseError(error)
+        showErrorToast(appError.message)
       } finally {
         setLoading(false)
       }

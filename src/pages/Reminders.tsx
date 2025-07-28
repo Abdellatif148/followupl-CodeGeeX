@@ -8,6 +8,7 @@ import ReminderForm from '../components/ReminderForm'
 import Table from '../components/Table'
 import { remindersApi, clientsApi } from '../lib/database'
 import { useAuth } from '../hooks/useAuth'
+import { handleSupabaseError, showErrorToast, showSuccessToast } from '../utils/errorHandler'
 import { formatDueDate } from '../utils/dateHelpers'
 
 export default function Reminders() {
@@ -72,9 +73,12 @@ export default function Reminders() {
     try {
       const newStatus = currentStatus === 'active' ? 'done' : 'active'
       await remindersApi.update(reminderId, { status: newStatus })
+      showSuccessToast(`Reminder ${newStatus === 'done' ? 'completed' : 'reactivated'}`)
       loadData()
     } catch (error) {
       console.error('Error updating reminder status:', error)
+      const appError = handleSupabaseError(error)
+      showErrorToast(appError.message)
     }
   }
 
@@ -82,9 +86,12 @@ export default function Reminders() {
     if (window.confirm('Are you sure you want to delete this reminder?')) {
       try {
         await remindersApi.delete(reminderId)
+        showSuccessToast('Reminder deleted successfully')
         loadData()
       } catch (error) {
         console.error('Error deleting reminder:', error)
+        const appError = handleSupabaseError(error)
+        showErrorToast(appError.message)
       }
     }
   }

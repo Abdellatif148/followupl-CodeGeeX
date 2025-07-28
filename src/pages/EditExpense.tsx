@@ -5,7 +5,7 @@ import { ArrowLeft } from 'lucide-react'
 import Layout from '../components/Layout'
 import ExpenseForm from '../components/ExpenseForm'
 import { expensesApi } from '../lib/database'
-import { handleSupabaseError } from '../utils/errorHandler'
+import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
 import { Expense } from '../types/database'
 
 export default function EditExpense() {
@@ -31,7 +31,7 @@ export default function EditExpense() {
       } catch (err) {
         console.error('Error loading expense:', err)
         const appError = handleSupabaseError(err)
-        setError(appError.message)
+        showErrorToast(appError.message)
       } finally {
         setLoading(false)
       }

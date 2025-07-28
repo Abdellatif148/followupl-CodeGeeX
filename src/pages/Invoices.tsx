@@ -9,6 +9,7 @@ import Table from '../components/Table'
 import { invoicesApi, clientsApi } from '../lib/database'
 import { useAuth } from '../hooks/useAuth'
 import { useCurrency } from '../hooks/useCurrency'
+import { handleSupabaseError, showErrorToast, showSuccessToast } from '../utils/errorHandler'
 import { formatDueDate } from '../utils/dateHelpers'
 
 export default function Invoices() {
@@ -75,9 +76,12 @@ export default function Invoices() {
   const markAsPaid = async (invoiceId: string) => {
     try {
       await invoicesApi.markPaid(invoiceId)
+      showSuccessToast('Invoice marked as paid')
       loadData()
     } catch (error) {
       console.error('Error marking invoice as paid:', error)
+      const appError = handleSupabaseError(error)
+      showErrorToast(appError.message)
     }
   }
 
@@ -85,9 +89,12 @@ export default function Invoices() {
     if (window.confirm('Are you sure you want to delete this invoice?')) {
       try {
         await invoicesApi.delete(invoiceId)
+        showSuccessToast('Invoice deleted successfully')
         loadData()
       } catch (error) {
         console.error('Error deleting invoice:', error)
+        const appError = handleSupabaseError(error)
+        showErrorToast(appError.message)
       }
     }
   }

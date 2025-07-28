@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { clientsApi, remindersApi, invoicesApi, expensesApi } from '../lib/database'
 import { useAuth } from '../hooks/useAuth'
 import { useCurrency } from '../hooks/useCurrency'
+import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
 import { formatDueDate } from '../utils/dateHelpers'
 
 interface SearchResult {
@@ -79,6 +80,8 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
       setAllData({ clients, reminders, invoices, expenses })
     } catch (error) {
       console.error('Error loading search data:', error)
+      const appError = handleSupabaseError(error)
+      showErrorToast(appError.message)
     } finally {
       setLoading(false)
     }

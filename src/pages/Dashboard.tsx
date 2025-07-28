@@ -9,6 +9,7 @@ import Layout from '../components/Layout'
 import { dashboardApi } from '../lib/database'
 import { useAuth } from '../hooks/useAuth'
 import { useCurrency } from '../hooks/useCurrency'
+import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
 import { formatDate } from '../utils/dateHelpers'
 
 interface DashboardStats {
@@ -45,6 +46,8 @@ export default function Dashboard() {
         setStats(dashboardStats)
       } catch (error) {
         console.error('Error loading dashboard:', error)
+        const appError = handleSupabaseError(error)
+        showErrorToast(appError.message)
       } finally {
         setLoading(false)
       }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { AlertTriangle, Crown } from 'lucide-react'
 import { clientsApi, profilesApi } from '../lib/database'
 import { useAuth } from '../hooks/useAuth'
+import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
 
 interface ClientLimitCheckerProps {
   onLimitReached: () => void
@@ -43,6 +44,8 @@ export default function ClientLimitChecker({ onLimitReached, children }: ClientL
       }
     } catch (error) {
       console.error('Error checking client limit:', error)
+     const appError = handleSupabaseError(error)
+     showErrorToast(appError.message)
     }
   }
 

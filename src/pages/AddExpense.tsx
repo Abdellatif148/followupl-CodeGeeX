@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { ArrowLeft } from 'lucide-react'
 import Layout from '../components/Layout'
 import ExpenseForm from '../components/ExpenseForm'
+import { showSuccessToast } from '../utils/errorHandler'
 
 export default function AddExpense() {
   const { t } = useTranslation()

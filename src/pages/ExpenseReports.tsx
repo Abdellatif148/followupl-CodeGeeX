@@ -7,6 +7,7 @@ import ExpenseAnalytics from '../components/ExpenseAnalytics'
 import { useAuth } from '../hooks/useAuth'
 import { expensesApi } from '../lib/database'
 import { useCurrency } from '../hooks/useCurrency'
+import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
 
 export default function ExpenseReports() {
   const { t } = useTranslation()
@@ -31,6 +32,8 @@ export default function ExpenseReports() {
         setExpenses(expensesData)
       } catch (error) {
         console.error('Error loading user:', error)
+        const appError = handleSupabaseError(error)
+        showErrorToast(appError.message)
       } finally {
         setLoading(false)
       }

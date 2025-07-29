@@ -70,7 +70,7 @@ export default function AddUser() {
               type="text"
               id="fullName"
               name="fullName"
-              value={formData.fullName}
+              value={formData.full_name}
               onChange={handleChange}
               required
               className="mt-1 block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"

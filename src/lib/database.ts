@@ -212,6 +212,7 @@ export const remindersApi = {
       }
     })
   }
+
   async getAll(userId: string): Promise<ReminderWithClient[]> {
     try {
       const { data, error } = await supabase

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Layout from '../components/Layout'
@@ -6,6 +6,8 @@ import { useAuth } from '../hooks/useAuth'
 import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
 import { projectApi } from '../lib/database/projectApi'
 import type { ProjectCreate } from '../lib/database/projectApi'
+import { Client } from '../types/database'
+import { dashboardApi } from '../lib/database'
 
 export default function AddProject() {
   const { t } = useTranslation()

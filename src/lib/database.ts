@@ -138,6 +138,80 @@ export const clientsApi = {
 
 // Reminder operations
 export const remindersApi = {
+  async sendPushNotification(reminderId: string) {
+    try {
+      const reminder = await remindersApi.getById(reminderId)
+      if (!reminder) return
+
+      const { data: user } = await supabase.auth.getUser()
+      if (!user) return
+
+      // Check if user has enabled push notifications
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('push_notifications_enabled')
+        .eq('user_id', user.id)
+        .single()
+
+      if (!profile?.push_notifications_enabled) return
+
+      // Get expo push token
+      const { data: pushToken } = await supabase
+        .from('user_devices')
+        .select('expo_push_token')
+        .eq('user_id', user.id)
+        .single()
+
+      if (!pushToken?.expo_push_token) return
+
+      // Send push notification
+      await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: pushToken.expo_push_token,
+          title: 'Followuply',
+          body: `⏰ ${reminder.title} is due soon!`,
+          data: { 
+            reminderId: reminder.id,
+            type: 'reminder'
+          }
+        }),
+      })
+    } catch (error) {
+      console.error('Error sending push notification:', error)
+    }
+  },
+
+  async requestBrowserNotificationPermission() {
+    if (!('Notification' in window)) {
+      console.log('This browser does not support desktop notification')
+      return
+    }
+
+    if (Notification.permission === 'granted') return
+
+    try {
+      await Notification.requestPermission()
+    } catch (error) {
+      console.error('Error requesting notification permission:', error)
+    }
+  },
+
+  async showBrowserNotification(reminder: Reminder) {
+    if (Notification.permission !== 'granted') return
+
+    new Notification('Followuply', {
+      body: `⏰ ${reminder.title} is due soon!`,
+      icon: '/logo192.png',
+      data: {
+        reminderId: reminder.id,
+        type: 'reminder'
+      }
+    })
+  }
   async getAll(userId: string): Promise<ReminderWithClient[]> {
     try {
       const { data, error } = await supabase

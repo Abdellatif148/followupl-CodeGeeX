@@ -4,39 +4,35 @@ import { useTranslation } from 'react-i18next'
 import Layout from '../components/Layout'
 import { useAuth } from '../hooks/useAuth'
 import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
-
-interface ProjectForm {
-  name: string
-  description: string
-  clientId: string
-  startDate: string
-  endDate: string
-  budget: number
-  status: 'active' | 'pending' | 'completed'
-}
+import { projectApi } from '../lib/database/projectApi'
+import type { ProjectCreate } from '../lib/database/projectApi'
 
 export default function AddProject() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { user } = useAuth()
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState<ProjectForm>({
+  const [formData, setFormData] = useState<Omit<ProjectCreate, 'user_id'>>({
     name: '',
     description: '',
-    clientId: '',
-    startDate: '',
-    endDate: '',
+    client_id: '',
+    start_date: '',
+    end_date: '',
     budget: 0,
     status: 'pending'
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!user) return
+
     setLoading(true)
 
     try {
-      // Add API call to create project here
-      // const response = await projectApi.create({ ...formData, userId: user.id })
+      await projectApi.create({
+        ...formData,
+        user_id: user.id
+      })
       navigate('/projects')
     } catch (error) {
       console.error('Error creating project:', error)

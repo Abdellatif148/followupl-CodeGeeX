@@ -8,6 +8,10 @@ import type {
   Expense, ExpenseInsert, ExpenseUpdate,
   ReminderWithClient, InvoiceWithClient, ExpenseWithClient
 } from '../types/database'
+import { projectApi } from './database/projectApi'
+import { userApi } from './database/userApi'
+
+export { projectApi, userApi }
 
 // Client operations
 export const clientsApi = {

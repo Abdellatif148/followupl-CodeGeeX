@@ -19,6 +19,7 @@ import Settings from './pages/Settings'
 import TermsOfService from './pages/TermsOfService'
 import PrivacyPolicy from './pages/PrivacyPolicy'
 import Support from './pages/Support'
+import ClientProfile from './pages/ClientProfile'
 import ProtectedRoute from './components/ProtectedRoute'
 import { StructuredData } from './components/StructuredData'
 import { SEO } from './components/SEO'
@@ -61,6 +62,11 @@ function App() {
           <Route path="/clients/add" element={
             <ProtectedRoute>
               <AddClient />
+            </ProtectedRoute>
+          } />
+          <Route path="/client/:clientId" element={
+            <ProtectedRoute>
+              <ClientProfile />
             </ProtectedRoute>
           } />
           <Route path="/reminders" element={

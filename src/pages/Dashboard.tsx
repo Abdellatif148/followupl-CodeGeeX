@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { 
   Users, Bell, FileText, DollarSign, TrendingUp, Clock,
@@ -11,6 +11,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useCurrency } from '../hooks/useCurrency'
 import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
 import { formatDate } from '../utils/dateHelpers'
+import Modal from '../components/Modal' // Assuming a reusable Modal component exists
 
 interface DashboardStats {
   activeClients: number
@@ -33,6 +34,8 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const { formatCurrency } = useCurrency()
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -57,6 +60,14 @@ export default function Dashboard() {
   }, [user])
 
   const userName = user?.user_metadata?.full_name?.split(' ')[0] || 'there'
+
+  const handleAddClick = () => {
+    setIsModalOpen(true)
+  }
+
+  const closeModal = () => {
+    setIsModalOpen(false)
+  }
 
   if (loading) {
     return (
@@ -89,13 +100,13 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="mt-4 sm:mt-0 flex space-x-3">
-            <Link
-              to="/clients/add"
+            <button
+              onClick={handleAddClick}
               className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 font-semibold"
             >
               <Plus className="w-5 h-5 mr-2" />
               {t('dashboard.addClient')}
-            </Link>
+            </button>
           </div>
         </div>
 
@@ -309,6 +320,34 @@ export default function Dashboard() {
               )}
             </div>
           </div>
+        )}
+
+        {isModalOpen && (
+          <Modal onClose={closeModal}>
+            <div className="p-6">
+              <h2 className="text-xl font-bold mb-4">Add New</h2>
+              <div className="flex flex-col space-y-4">
+                <button
+                  onClick={() => {
+                    closeModal()
+                    navigate('/projects/add')
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Add New Project
+                </button>
+                <button
+                  onClick={() => {
+                    closeModal()
+                    navigate('/users/add')
+                  }}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                >
+                  Add New User
+                </button>
+              </div>
+            </div>
+          </Modal>
         )}
       </div>
     </Layout>

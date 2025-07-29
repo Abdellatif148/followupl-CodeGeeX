@@ -2,25 +2,17 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import Layout from '../components/Layout'
-import { useAuth } from '../hooks/useAuth'
 import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
-
-interface UserForm {
-  email: string
-  fullName: string
-  role: 'admin' | 'user' | 'client'
-  phone?: string
-  company?: string
-}
+import { userApi } from '../lib/database/userApi'
+import type { UserCreate } from '../lib/database/userApi'
 
 export default function AddUser() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState<UserForm>({
+  const [formData, setFormData] = useState<UserCreate>({
     email: '',
-    fullName: '',
+    full_name: '',
     role: 'user',
     phone: '',
     company: ''
@@ -31,8 +23,7 @@ export default function AddUser() {
     setLoading(true)
 
     try {
-      // Add API call to create user here
-      // const response = await userApi.create({ ...formData })
+      await userApi.create(formData)
       navigate('/users')
     } catch (error) {
       console.error('Error creating user:', error)

@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import {
+import { 
   Home, Users, Bell, FileText, Settings, LogOut, Menu, X,
-  User, Search, Plus, DollarSign
+  User, Search, Plus
 } from 'lucide-react'
-import { useAuth } from '../hooks/useAuth'
+import { supabase } from '../lib/supabase'
 import DarkModeToggle from './DarkModeToggle'
 import NotificationCenter from './NotificationCenter'
 import GlobalSearch from './GlobalSearch'
 import { notificationsApi, profilesApi } from '../lib/database'
-import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
+import { useAnalytics, useAuthAnalytics } from '../hooks/useAnalytics'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -18,8 +18,10 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const { t } = useTranslation()
-  const { user, signOut } = useAuth()
+  const analytics = useAnalytics()
+  const { trackLogout } = useAuthAnalytics()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotifications, setShowNotifications] = useState(false)
@@ -32,12 +34,14 @@ export default function Layout({ children }: LayoutProps) {
     { name: t('navigation.clients'), href: '/clients', icon: Users },
     { name: t('navigation.reminders'), href: '/reminders', icon: Bell },
     { name: t('navigation.invoices'), href: '/invoices', icon: FileText },
-    { name: t('expense', 'Expenses'), href: '/expenses', icon: DollarSign },
     { name: t('navigation.settings'), href: '/settings', icon: Settings },
   ]
 
   useEffect(() => {
-    const loadUserData = async () => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+      
       if (user) {
         // Get user profile
         try {
@@ -45,8 +49,6 @@ export default function Layout({ children }: LayoutProps) {
           setProfile(profileData)
         } catch (error) {
           console.error('Error fetching profile:', error)
-          const appError = handleSupabaseError(error)
-          showErrorToast(appError.message)
         }
 
         // Get unread notifications count
@@ -55,24 +57,21 @@ export default function Layout({ children }: LayoutProps) {
           setUnreadCount(notifications.length)
         } catch (error) {
           console.error('Error fetching notifications:', error)
-          const appError = handleSupabaseError(error)
-          showErrorToast(appError.message)
         }
       }
     }
 
-    loadUserData()
-  }, [user])
+    getUser()
+  }, [])
 
   const handleSignOut = async () => {
-    try {
-      await signOut()
-      navigate('/login')
-    } catch (error) {
-      console.error('Error signing out:', error)
-      const appError = handleSupabaseError(error)
-      showErrorToast(appError.message)
-    }
+    // Track logout event
+    trackLogout()
+    
+    await supabase.auth.signOut()
+    // Clear language selection flag
+    localStorage.removeItem('followuply-language-selected')
+    navigate('/login')
   }
 
   const isCurrentPage = (href: string) => {
@@ -105,6 +104,7 @@ export default function Layout({ children }: LayoutProps) {
                 to={item.href}
                 onClick={() => {
                   setSidebarOpen(false)
+                  analytics.trackClick(`nav_${item.name.toLowerCase()}`, 'navigation')
                 }}
                 className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
                   isCurrentPage(item.href)
@@ -145,6 +145,7 @@ export default function Layout({ children }: LayoutProps) {
               <Link
                 key={item.name}
                 to={item.href}
+                onClick={() => analytics.trackClick(`nav_${item.name.toLowerCase()}`, 'navigation')}
                 className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
                   isCurrentPage(item.href)
                     ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
@@ -182,7 +183,7 @@ export default function Layout({ children }: LayoutProps) {
                   className="flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200 w-64"
                 >
                   <Search className="w-5 h-5" />
-                  <span>Search clients, invoices, reminders, expenses...</span>
+                  <span>Search clients, invoices, reminders...</span>
                 </button>
               </div>
             </div>

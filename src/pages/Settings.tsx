@@ -8,16 +8,15 @@ import {
 import Layout from '../components/Layout'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { profilesApi, currencyUtils } from '../lib/database'
-import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { useCurrency } from '../hooks/useCurrency'
-import { handleSupabaseError, showErrorToast, showSuccessToast } from '../utils/errorHandler'
+import { useAnalytics } from '../hooks/useAnalytics'
 
 export default function Settings() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { user, signOut } = useAuth()
+  const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -32,6 +31,7 @@ export default function Settings() {
   } | null>(null)
   const { isDarkMode, toggleDarkMode } = useDarkMode()
   const { currency, updateCurrency, refreshCurrency } = useCurrency()
+  const analytics = useAnalytics()
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -48,33 +48,33 @@ export default function Settings() {
 
   useEffect(() => {
     loadUserData()
-  }, [user])
+  }, [])
 
   const loadUserData = async () => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
-    
     try {
-      const profileData = await profilesApi.get(user.id)
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
       
-      if (profileData) {
-        setProfile(profileData)
-        setFormData({
-          full_name: profileData.full_name || '',
-          currency: profileData.currency || 'USD',
-          timezone: profileData.timezone || 'UTC',
-          language: profileData.language || i18n.language || 'en'
-        })
-      } else {
-        // Profile doesn't exist yet, use default values
-        setFormData({
-          full_name: '',
-          currency: 'USD',
-          timezone: 'UTC',
-          language: i18n.language || 'en'
-        })
+      if (user) {
+        const profileData = await profilesApi.get(user.id)
+        
+        if (profileData) {
+          setProfile(profileData)
+          setFormData({
+            full_name: profileData.full_name || '',
+            currency: profileData.currency || 'USD',
+            timezone: profileData.timezone || 'UTC',
+            language: profileData.language || i18n.language || 'en'
+          })
+        } else {
+          // Profile doesn't exist yet, use default values
+          setFormData({
+            full_name: '',
+            currency: 'USD',
+            timezone: 'UTC',
+            language: i18n.language || 'en'
+          })
+        }
       }
     } catch (error) {
       console.error('Error loading user data:', error)
@@ -157,11 +157,13 @@ export default function Settings() {
       updateCurrency(formData.currency)
       
       await loadUserData()
-      showSuccessToast('Profile updated successfully!')
+      showNotification('success', 'Profile updated successfully!')
+      
+      // Track settings update
+      analytics.trackFeatureUsage('settings', 'profile_update')
     } catch (error) {
       console.error('Error saving profile:', error)
-      const appError = handleSupabaseError(error)
-      showErrorToast(appError.message)
+      showNotification('error', 'Failed to update profile. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -191,11 +193,13 @@ export default function Settings() {
         newPassword: '',
         confirmPassword: ''
       })
-      showSuccessToast('Password updated successfully!')
+      showNotification('success', 'Password updated successfully!')
+      
+      // Track password change
+      analytics.trackFeatureUsage('settings', 'password_change')
     } catch (error) {
       console.error('Error changing password:', error)
-      const appError = handleSupabaseError(error)
-      showErrorToast(appError.message)
+      showNotification('error', 'Failed to update password. Please try again.')
     } finally {
       setSaving(false)
     }
@@ -248,15 +252,21 @@ export default function Settings() {
       // Step 2: Delete the authentication account
       try {
         // Use the user delete method (more reliable for self-deletion)
-        const { error: deleteError } = await signOut()
+        const { error: deleteError } = await supabase.auth.deleteUser()
         
         if (deleteError) {
           console.error('❌ Auth deletion failed:', deleteError.message)
+          // Force sign out if deletion fails
+          await supabase.auth.signOut()
+          console.log('🔐 Forced sign out due to deletion failure')
         } else {
-          console.log('✅ User signed out successfully')
+          console.log('✅ Authentication account deleted successfully')
         }
       } catch (error) {
         console.error('❌ Auth deletion error:', error)
+        // Force sign out as fallback
+        await supabase.auth.signOut()
+        console.log('🔐 Forced sign out due to error')
       }
 
       // Step 3: Clear all local data
@@ -265,7 +275,7 @@ export default function Settings() {
       console.log('🧹 Cleared all local storage')
       
       // Show success message
-      showSuccessToast('Account permanently deleted. You will be redirected shortly.')
+      showNotification('success', 'Account permanently deleted. You will be redirected shortly.')
       
       // Navigate to home page
       setTimeout(() => {
@@ -274,12 +284,11 @@ export default function Settings() {
       
     } catch (error) {
       console.error('❌ Critical error during account deletion:', error)
-      const appError = handleSupabaseError(error)
-      showErrorToast(appError.message)
+      showNotification('error', 'Account deletion failed. Please contact support.')
       
       // Force sign out for security even on error
       try {
-        await signOut()
+        await supabase.auth.signOut()
         localStorage.clear()
         sessionStorage.clear()
         setTimeout(() => {

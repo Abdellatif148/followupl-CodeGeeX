@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { Search, X, Users, Bell, FileText, Calendar, DollarSign } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { clientsApi, remindersApi, invoicesApi, expensesApi } from '../lib/database'
-import { useAuth } from '../hooks/useAuth'
+import { clientsApi, remindersApi, invoicesApi } from '../lib/database'
+import { supabase } from '../lib/supabase'
 import { useCurrency } from '../hooks/useCurrency'
-import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
-import { formatDueDate } from '../utils/dateHelpers'
 
 interface SearchResult {
   id: string
-  type: 'client' | 'reminder' | 'invoice' | 'expense'
+  type: 'client' | 'reminder' | 'invoice'
   title: string
   subtitle: string
   status?: string
@@ -28,17 +26,14 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
-  const { user } = useAuth()
   const [allData, setAllData] = useState<{
     clients: any[]
     reminders: any[]
     invoices: any[]
-    expenses: any[]
   }>({
     clients: [],
     reminders: [],
-    invoices: [],
-    expenses: []
+    invoices: []
   })
   const navigate = useNavigate()
   const { formatCurrency } = useCurrency()
@@ -68,20 +63,18 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const loadAllData = async () => {
     setLoading(true)
     try {
-      if (!user) return
-      
-      const [clients, reminders, invoices, expenses] = await Promise.all([
-        clientsApi.getAll(user.id),
-        remindersApi.getAll(user.id),
-        invoicesApi.getAll(user.id),
-        expensesApi.getAll(user.id)
-      ])
-      
-      setAllData({ clients, reminders, invoices, expenses })
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const [clients, reminders, invoices] = await Promise.all([
+          clientsApi.getAll(user.id),
+          remindersApi.getAll(user.id),
+          invoicesApi.getAll(user.id)
+        ])
+        
+        setAllData({ clients, reminders, invoices })
+      }
     } catch (error) {
       console.error('Error loading search data:', error)
-      const appError = handleSupabaseError(error)
-      showErrorToast(appError.message)
     } finally {
       setLoading(false)
     }
@@ -182,34 +175,6 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
       }
     })
 
-    // Search expenses
-    allData.expenses.forEach(expense => {
-      const matchesTitle = expense.title.toLowerCase().includes(searchTerm)
-      const matchesDescription = expense.description?.toLowerCase().includes(searchTerm)
-      const matchesCategory = expense.category.toLowerCase().includes(searchTerm)
-      const matchesClient = expense.clients?.name.toLowerCase().includes(searchTerm)
-      const matchesAmount = expense.amount.toString().includes(searchTerm)
-      const matchesStatus = expense.status?.toLowerCase().includes(searchTerm)
-      
-      // Special expense searches
-      const isTaxDeductible = searchTerm.includes('tax') && expense.tax_deductible
-      
-      if (matchesTitle || matchesDescription || matchesCategory || matchesClient ||
-          matchesAmount || matchesStatus || isTaxDeductible) {
-        searchResults.push({
-          id: expense.id,
-          type: 'expense',
-          title: expense.title,
-          subtitle: `${expense.category} • ${expense.clients?.name || 'No client'} • ${formatCurrency(expense.amount, expense.currency)}`,
-          status: expense.status,
-          amount: expense.amount,
-          currency: expense.currency,
-          date: expense.expense_date,
-          icon: DollarSign
-        })
-      }
-    })
-
     // Sort results by relevance (exact matches first, then partial matches)
     searchResults.sort((a, b) => {
       const aExact = a.title.toLowerCase() === searchTerm
@@ -235,10 +200,25 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
       case 'invoice':
         navigate('/invoices')
         break
-      case 'expense':
-        navigate('/expenses')
-        break
     }
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffTime = date.getTime() - now.getTime()
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
+    if (diffDays === 0) return 'Today'
+    if (diffDays === 1) return 'Tomorrow'
+    if (diffDays === -1) return 'Yesterday'
+    if (diffDays < 0) return `${Math.abs(diffDays)} days overdue`
+    if (diffDays < 7) return `Due in ${diffDays} days`
+    
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    })
   }
 
   const getStatusColor = (status: string, type: string) => {
@@ -267,15 +247,6 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
         default: return 'text-gray-600 dark:text-gray-400'
       }
     }
-    if (type === 'expense') {
-      switch (status) {
-        case 'approved': return 'text-green-600 dark:text-green-400'
-        case 'pending': return 'text-yellow-600 dark:text-yellow-400'
-        case 'reimbursed': return 'text-blue-600 dark:text-blue-400'
-        case 'reconciled': return 'text-purple-600 dark:text-purple-400'
-        default: return 'text-gray-600 dark:text-gray-400'
-      }
-    }
     return 'text-gray-600 dark:text-gray-400'
   }
 
@@ -300,7 +271,7 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search clients, invoices, reminders, expenses... (try 'paid', 'tax', 'overdue')"
+              placeholder="Search clients, invoices, reminders... (try 'paid', 'unpaid', 'overdue')"
               className="flex-1 bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none text-lg"
             />
             <button
@@ -350,13 +321,11 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                         result.type === 'client' ? 'bg-blue-100 dark:bg-blue-900/20' :
                         result.type === 'invoice' ? 'bg-green-100 dark:bg-green-900/20' :
-                        result.type === 'expense' ? 'bg-purple-100 dark:bg-purple-900/20' :
                         'bg-yellow-100 dark:bg-yellow-900/20'
                       }`}>
                         <result.icon className={`w-5 h-5 ${
                           result.type === 'client' ? 'text-blue-600 dark:text-blue-400' :
                           result.type === 'invoice' ? 'text-green-600 dark:text-green-400' :
-                          result.type === 'expense' ? 'text-purple-600 dark:text-purple-400' :
                           'text-yellow-600 dark:text-yellow-400'
                         }`} />
                       </div>
@@ -373,7 +342,7 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
                             )}
                             {result.date && (
                               <span className="text-xs text-gray-500 dark:text-gray-400">
-                                {formatDueDate(result.date)}
+                                {formatDate(result.date)}
                               </span>
                             )}
                           </div>
@@ -397,7 +366,6 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
                 <p>• Type client names to find specific clients</p>
                 <p>• Use "paid" or "unpaid" to filter by payment status</p>
                 <p>• Try "overdue" to find overdue invoices and reminders</p>
-                <p>• Search "tax" to find tax-deductible expenses</p>
               </div>
             </div>
           )}

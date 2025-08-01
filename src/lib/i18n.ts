@@ -27,7 +27,7 @@ export const languages = [
   { code: 'de', name: 'Deutsch', flag: '🇩🇪', dir: 'ltr' },
   { code: 'it', name: 'Italiano', flag: '🇮🇹', dir: 'ltr' },
   { code: 'hi', name: 'हिन्दी', flag: '🇮🇳', dir: 'ltr' }
-] as const
+]
 
 // Get language direction
 export const getLanguageDirection = (language: string): 'ltr' | 'rtl' => {
@@ -42,7 +42,7 @@ i18n
   .init({
     resources,
     fallbackLng: 'en',
-    debug: import.meta.env.DEV,
+    debug: false,
     
     detection: {
       order: ['localStorage', 'navigator', 'htmlTag'],
@@ -57,9 +57,6 @@ i18n
     react: {
       useSuspense: false
     }
-  })
-  .catch((error) => {
-    console.error('Error initializing i18n:', error)
   })
 
 // Update document direction when language changes

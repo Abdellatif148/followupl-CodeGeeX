@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { Calendar, Clock, FileText, User, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 import { remindersApi, clientsApi } from '../lib/database'
-import { useAuth } from '../hooks/useAuth'
+import { supabase } from '../lib/supabase'
 import type { Client } from '../types/database'
-import { handleSupabaseError, showErrorToast, showSuccessToast } from '../utils/errorHandler'
+import { useBusinessAnalytics } from '../hooks/useAnalytics'
 
 interface ReminderFormProps {
   onSuccess?: () => void
@@ -12,7 +12,7 @@ interface ReminderFormProps {
 }
 
 export default function ReminderForm({ onSuccess, onCancel, editingReminder }: ReminderFormProps) {
-  const { user } = useAuth()
+  const { trackReminderAction } = useBusinessAnalytics()
   const [clients, setClients] = useState<Client[]>([])
   const [formData, setFormData] = useState({
     title: '',
@@ -43,11 +43,12 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
   }, [editingReminder])
 
   const loadClients = async () => {
-    if (!user) return
-    
     try {
-      const clientsData = await clientsApi.getAll(user.id)
-      setClients(clientsData)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const clientsData = await clientsApi.getAll(user.id)
+        setClients(clientsData)
+      }
     } catch (error) {
       console.error('Error loading clients:', error)
     }
@@ -98,6 +99,8 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
     setNotification(null)
 
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
       if (!user) {
         throw new Error('User not authenticated')
       }
@@ -120,10 +123,32 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
 
       if (editingReminder) {
         await remindersApi.update(editingReminder.id, reminderData)
-        showSuccessToast('Reminder updated successfully!')
+        
+        // Track reminder update
+        trackReminderAction('update', {
+          has_client: !!reminderData.client_id,
+          reminder_type: reminderData.reminder_type,
+          priority: reminderData.priority
+        })
+        
+        setNotification({
+          type: 'success',
+          message: 'Reminder updated successfully!'
+        })
       } else {
         await remindersApi.create(reminderData)
-        showSuccessToast('Reminder created successfully!')
+        
+        // Track reminder creation
+        trackReminderAction('create', {
+          has_client: !!reminderData.client_id,
+          reminder_type: reminderData.reminder_type,
+          priority: reminderData.priority
+        })
+        
+        setNotification({
+          type: 'success',
+          message: 'Reminder created successfully!'
+        })
       }
 
       // Clear form if creating new
@@ -144,8 +169,10 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
 
     } catch (error) {
       console.error('Error saving reminder:', error)
-      const appError = handleSupabaseError(error)
-      showErrorToast(appError.message)
+      setNotification({
+        type: 'error',
+        message: 'Failed to save reminder. Please try again.'
+      })
     } finally {
       setIsSubmitting(false)
     }

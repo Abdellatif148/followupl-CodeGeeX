@@ -601,26 +601,84 @@ export default function Settings() {
                     <p className="text-gray-600 dark:text-gray-400">Manage your subscription and billing information</p>
                   </div>
                   
-                  <div className="text-center py-16">
-                    <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/20 dark:to-purple-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                      <CreditCard className="w-10 h-10 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-                      Coming Soon
-                    </h3>
-                    <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-md mx-auto">
-                      We're working on bringing you premium features and subscription plans. Stay tuned for updates!
-                    </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Free Plan */}
                     <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-6">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mb-4">
                         <div>
-                          <h4 className="text-xl font-bold text-blue-900 dark:text-blue-300">Free Plan</h4>
-                          <p className="text-blue-700 dark:text-blue-400">Current plan - All features included</p>
+                          <h3 className="text-xl font-bold text-blue-900 dark:text-blue-300">Free Plan</h3>
+                          <p className="text-blue-700 dark:text-blue-400">Basic features for everyone</p>
                         </div>
                         <span className="px-4 py-2 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 rounded-lg font-semibold">
                           Active
                         </span>
                       </div>
+                      <div className="mb-6">
+                        <span className="text-3xl font-bold text-gray-900 dark:text-white">$0</span>
+                        <span className="text-gray-500 dark:text-gray-400">/month</span>
+                      </div>
+                      <ul className="space-y-3 mb-6">
+                        <li className="flex items-center text-gray-700 dark:text-gray-300">
+                          <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                          Up to 10 clients
+                        </li>
+                        <li className="flex items-center text-gray-700 dark:text-gray-300">
+                          <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                          Basic reminders
+                        </li>
+                        <li className="flex items-center text-gray-700 dark:text-gray-300">
+                          <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                          Invoice generation
+                        </li>
+                      </ul>
+                      <button className="w-full py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium" disabled>
+                        Current Plan
+                      </button>
+                    </div>
+
+                    {/* Pro Plan */}
+                    <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-2xl p-6 relative">
+                      <div className="absolute top-0 right-0 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-bold px-3 py-1 rounded-bl-xl rounded-tr-xl">
+                        POPULAR
+                      </div>
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-purple-900 dark:text-purple-300">Pro Plan</h3>
+                          <p className="text-purple-700 dark:text-purple-400">Advanced features for professionals</p>
+                        </div>
+                      </div>
+                      <div className="mb-6">
+                        <span className="text-3xl font-bold text-gray-900 dark:text-white">$9.99</span>
+                        <span className="text-gray-500 dark:text-gray-400">/month</span>
+                      </div>
+                      <ul className="space-y-3 mb-6">
+                        <li className="flex items-center text-gray-700 dark:text-gray-300">
+                          <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                          Unlimited clients
+                        </li>
+                        <li className="flex items-center text-gray-700 dark:text-gray-300">
+                          <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                          Advanced reminders
+                        </li>
+                        <li className="flex items-center text-gray-700 dark:text-gray-300">
+                          <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                          Custom invoices
+                        </li>
+                        <li className="flex items-center text-gray-700 dark:text-gray-300">
+                          <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                          Progress chart graphs
+                        </li>
+                        <li className="flex items-center text-gray-700 dark:text-gray-300">
+                          <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                          Priority support
+                        </li>
+                      </ul>
+                      <button 
+                        onClick={() => navigate('/upgrade')}
+                        className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium hover:from-purple-700 hover:to-pink-700 transition-all duration-200"
+                      >
+                        Upgrade to Pro
+                      </button>
                     </div>
                   </div>
                 </div>

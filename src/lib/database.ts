@@ -158,10 +158,12 @@ export const remindersApi = {
         status: 'completed',
         completed_at: new Date().toISOString()
       })
+      .eq('id', id)
+      .select()
+      .single()
 
-    } catch (error) {
-      console.error('Error sending push notification:', error)
-    }
+    if (error) throw error
+    return data as Reminder
   },
 
   async requestBrowserNotificationPermission() {

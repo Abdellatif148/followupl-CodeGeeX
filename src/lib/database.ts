@@ -158,12 +158,7 @@ export const remindersApi = {
         status: 'completed',
         completed_at: new Date().toISOString()
       })
-      .eq('id', id)
-      .select()
-      .single()
 
-    if (error) throw error
-    return data as Reminder
   },
 
   async requestBrowserNotificationPermission() {

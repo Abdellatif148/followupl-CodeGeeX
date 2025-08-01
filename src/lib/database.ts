@@ -211,7 +211,7 @@ export const remindersApi = {
         type: 'reminder'
       }
     })
-  }
+  },
 
   async getAll(userId: string): Promise<ReminderWithClient[]> {
     try {

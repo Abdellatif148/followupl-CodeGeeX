@@ -142,6 +142,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={auth}>
       {children}
     </AuthContext.Provider>
+  )
 }
 
 // Hook to use auth context (alternative implementation)

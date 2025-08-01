@@ -158,7 +158,7 @@ export const remindersApi = {
         status: 'completed',
         completed_at: new Date().toISOString()
       })
-<<<<<<< HEAD
+
     } catch (error) {
       console.error('Error sending push notification:', error)
     }
@@ -330,14 +330,14 @@ export const remindersApi = {
       console.error('Error in remindersApi.markCompleted:', error)
       throw error
     }
-=======
+
       .eq('id', id)
       .select()
       .single()
     
     if (error) throw error
     return data as Reminder
->>>>>>> f4b389d (Auto commit 2025-08-01 08:14:14)
+
   }
 }
 

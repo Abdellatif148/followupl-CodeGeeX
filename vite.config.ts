@@ -1,26 +1,10 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { createSitemap } from 'vite-plugin-sitemap';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    react(),
-    createSitemap({
-      hostname: 'https://followuply.vercel.app',
-      routes: [
-        '/',
-        '/login',
-        '/signup',
-        '/forgot-password',
-        '/support',
-        '/terms',
-        '/privacy'
-      ],
-      changefreq: 'weekly',
-      priority: 0.8,
-      lastmod: new Date().toISOString().split('T')[0]
-    })
+    react()
   ],
   optimizeDeps: {
     exclude: ['lucide-react'],

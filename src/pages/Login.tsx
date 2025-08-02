@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { auth } from '../lib/supabase'
 import { useNavigate, Link } from 'react-router-dom'
 import DarkModeToggle from '../components/DarkModeToggle'
 import GoogleAuthButton from '../components/GoogleAuthButton'
-import { useAuthAnalytics } from '../hooks/useAnalytics'
+import { useAuth } from '../hooks/useAuth'
 
 export default function Login() {
-  const { trackLogin } = useAuthAnalytics()
+  const { user } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -19,7 +19,6 @@ export default function Login() {
   useEffect(() => {
     // Check if user is already logged in
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         // Check if language is selected
         const hasSelectedLanguage = localStorage.getItem('followuply-language-selected')
@@ -30,23 +29,11 @@ export default function Login() {
         }
       }
     }
-    checkUser()
-
-    // Listen for auth state changes (for OAuth redirects)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // Check if language is selected
-        const hasSelectedLanguage = localStorage.getItem('followuply-language-selected')
-        if (hasSelectedLanguage) {
-          navigate('/dashboard')
-        } else {
-          navigate('/language-selection')
-        }
-      }
-    })
-
-    return () => subscription.unsubscribe()
-  }, [navigate])
+    
+    if (user) {
+      checkUser()
+    }
+  }, [user, navigate])
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,10 +46,7 @@ export default function Login() {
     setError('')
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password: password
-      })
+      const { data, error } = await auth.signIn(email, password)
 
       if (error) {
         if (error.message.includes('Invalid login credentials')) {
@@ -71,9 +55,6 @@ export default function Login() {
           setError(error.message)
         }
       } else if (data.user) {
-        // Track successful login
-        trackLogin('email')
-        
         // For login, go directly to dashboard (language already selected)
         navigate('/dashboard')
       }
@@ -85,8 +66,6 @@ export default function Login() {
   }
 
   const handleGoogleSuccess = () => {
-    // Track Google login
-    trackLogin('google')
     // OAuth will handle the redirect automatically
   }
 

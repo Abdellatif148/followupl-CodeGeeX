@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { AlertTriangle, Crown } from 'lucide-react'
 import { clientsApi, profilesApi } from '../lib/database'
-import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
+import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
 
 interface ClientLimitCheckerProps {
   onLimitReached: () => void
@@ -9,18 +10,19 @@ interface ClientLimitCheckerProps {
 }
 
 export default function ClientLimitChecker({ onLimitReached, children }: ClientLimitCheckerProps) {
+  const { user } = useAuth()
   const [clientCount, setClientCount] = useState(0)
   const [userPlan, setUserPlan] = useState<'free' | 'pro' | 'super_pro'>('free')
   const [showLimitWarning, setShowLimitWarning] = useState(false)
 
   useEffect(() => {
     checkClientLimit()
-  }, [])
+  }, [user])
 
   const checkClientLimit = async () => {
+    if (!user) return
+    
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
 
       // Get user's plan
       const profile = await profilesApi.get(user.id)
@@ -42,6 +44,8 @@ export default function ClientLimitChecker({ onLimitReached, children }: ClientL
       }
     } catch (error) {
       console.error('Error checking client limit:', error)
+     const appError = handleSupabaseError(error)
+     showErrorToast(appError.message)
     }
   }
 

@@ -7,10 +7,13 @@ import Layout from '../components/Layout'
 import InvoiceForm from '../components/InvoiceForm'
 import Table from '../components/Table'
 import { invoicesApi, clientsApi } from '../lib/database'
-import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 import { useCurrency } from '../hooks/useCurrency'
+import { handleSupabaseError, showErrorToast, showSuccessToast } from '../utils/errorHandler'
+import { formatDueDate } from '../utils/dateHelpers'
 
 export default function Invoices() {
+  const { user } = useAuth()
   const [invoices, setInvoices] = useState<any[]>([])
   const [clients, setClients] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -18,26 +21,25 @@ export default function Invoices() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'paid' | 'unpaid'>('all')
   const [showForm, setShowForm] = useState(false)
   const [editingInvoice, setEditingInvoice] = useState<any>(null)
-  const [user, setUser] = useState<any>(null)
   const { formatCurrency } = useCurrency()
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [user])
 
   const loadData = async () => {
+    if (!user) {
+      setLoading(false)
+      return
+    }
+    
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-      
-      if (user) {
-        const [invoicesData, clientsData] = await Promise.all([
-          invoicesApi.getAll(user.id),
-          clientsApi.getAll(user.id)
-        ])
-        setInvoices(invoicesData)
-        setClients(clientsData)
-      }
+      const [invoicesData, clientsData] = await Promise.all([
+        invoicesApi.getAll(user.id),
+        clientsApi.getAll(user.id)
+      ])
+      setInvoices(invoicesData)
+      setClients(clientsData)
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
@@ -71,31 +73,15 @@ export default function Invoices() {
     }
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffTime = date.getTime() - now.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    
-    if (diffDays === 0) return 'Today'
-    if (diffDays === 1) return 'Tomorrow'
-    if (diffDays === -1) return 'Yesterday'
-    if (diffDays < 0) return `${Math.abs(diffDays)} days overdue`
-    if (diffDays < 7) return `Due in ${diffDays} days`
-    
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
-    })
-  }
-
   const markAsPaid = async (invoiceId: string) => {
     try {
       await invoicesApi.markPaid(invoiceId)
+      showSuccessToast('Invoice marked as paid')
       loadData()
     } catch (error) {
       console.error('Error marking invoice as paid:', error)
+      const appError = handleSupabaseError(error)
+      showErrorToast(appError.message)
     }
   }
 
@@ -103,9 +89,12 @@ export default function Invoices() {
     if (window.confirm('Are you sure you want to delete this invoice?')) {
       try {
         await invoicesApi.delete(invoiceId)
+        showSuccessToast('Invoice deleted successfully')
         loadData()
       } catch (error) {
         console.error('Error deleting invoice:', error)
+        const appError = handleSupabaseError(error)
+        showErrorToast(appError.message)
       }
     }
   }
@@ -176,7 +165,7 @@ export default function Invoices() {
               ? 'text-red-600 dark:text-red-400'
               : ''
           }>
-            {formatDate(value)}
+            {formatDueDate(value)}
           </span>
         </div>
       )

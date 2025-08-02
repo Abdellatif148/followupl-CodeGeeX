@@ -78,94 +78,6 @@ export const clientsApi = {
 
 // Reminder operations
 export const remindersApi = {
-  async getAll(userId: string) {
-    const { data, error } = await supabase
-      .from('reminders')
-      .select(`
-        *,
-        clients (
-          id,
-          name,
-          platform
-        )
-      `)
-      .eq('user_id', userId)
-      .order('due_date', { ascending: true })
-    
-    if (error) throw error
-    return data
-  },
-
-  async getUpcoming(userId: string, days: number = 7) {
-    const futureDate = new Date()
-    futureDate.setDate(futureDate.getDate() + days)
-    
-    const { data, error } = await supabase
-      .from('reminders')
-      .select(`
-        *,
-        clients (
-          id,
-          name,
-          platform
-        )
-      `)
-      .eq('user_id', userId)
-      .eq('status', 'pending')
-      .lte('due_date', futureDate.toISOString())
-      .order('due_date', { ascending: true })
-    
-    if (error) throw error
-    return data
-  },
-
-  async create(reminder: ReminderInsert) {
-    const { data, error } = await supabase
-      .from('reminders')
-      .insert(reminder)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Reminder
-  },
-
-  async update(id: string, updates: ReminderUpdate) {
-    const { data, error } = await supabase
-      .from('reminders')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Reminder
-  },
-
-  async delete(id: string) {
-    const { error } = await supabase
-      .from('reminders')
-      .delete()
-      .eq('id', id)
-    
-    if (error) throw error
-  },
-
-  async markCompleted(id: string) {
-    const { data, error } = await supabase
-      .from('reminders')
-      .update({ 
-        status: 'completed',
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', id)
-      .select()
-      .single()
-
-    if (error) throw error
-    return data as Reminder
-  },
-
   async requestBrowserNotificationPermission() {
     if (!('Notification' in window)) {
       console.log('This browser does not support desktop notification')
@@ -194,7 +106,7 @@ export const remindersApi = {
     })
   },
 
-  async getAll(userId: string): Promise<ReminderWithClient[]> {
+  async getAll(userId: string) {
     try {
       const { data, error } = await supabase
         .from('reminders')
@@ -220,7 +132,7 @@ export const remindersApi = {
     }
   },
 
-  async getUpcoming(userId: string, days: number = 7): Promise<ReminderWithClient[]> {
+  async getUpcoming(userId: string, days: number = 7) {
     try {
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + days)
@@ -332,14 +244,6 @@ export const remindersApi = {
       console.error('Error in remindersApi.markCompleted:', error)
       throw error
     }
-
-      .eq('id', id)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Reminder
-
   }
 }
 

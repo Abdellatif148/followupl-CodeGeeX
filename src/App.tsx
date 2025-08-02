@@ -17,8 +17,6 @@ import Upgrade from './pages/Upgrade'
 import ProgressCharts from './pages/ProgressCharts'
 import TermsOfService from './pages/TermsOfService'
 import PrivacyPolicy from './pages/PrivacyPolicy'
-import Support from './pages/Support'
-import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
   return (

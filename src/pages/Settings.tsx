@@ -594,7 +594,34 @@ export default function Settings() {
                     <p className="text-gray-600 dark:text-gray-400">Manage your subscription and billing information</p>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-8">
+                    {/* Current Plan Status */}
+                    <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-blue-900 dark:text-blue-300">Current Plan</h3>
+                          <p className="text-blue-700 dark:text-blue-400">{isPro ? 'Pro Plan' : 'Free Plan'}</p>
+                        </div>
+                        <span className="px-4 py-2 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 rounded-lg font-semibold">
+                          Active
+                        </span>
+                      </div>
+                      <div className="mb-4">
+                        <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                          {isPro ? '$9.99' : '$0'}
+                        </span>
+                        <span className="text-gray-500 dark:text-gray-400">/month</span>
+                      </div>
+                      <p className="text-gray-600 dark:text-gray-400">
+                        {isPro 
+                          ? 'You have access to all Pro features including unlimited clients, progress charts, and priority support.'
+                          : 'You are on the free plan with basic features. Upgrade to Pro for unlimited access.'
+                        }
+                      </p>
+                    </div>
+
+                    {/* Plan Comparison */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Free Plan */}
                     <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-6">
                       <div className="flex items-center justify-between mb-4">
@@ -613,7 +640,7 @@ export default function Settings() {
                       <ul className="space-y-3 mb-6">
                         <li className="flex items-center text-gray-700 dark:text-gray-300">
                           <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                          Up to 10 clients
+                          Up to 20 clients
                         </li>
                         <li className="flex items-center text-gray-700 dark:text-gray-300">
                           <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
@@ -621,7 +648,11 @@ export default function Settings() {
                         </li>
                         <li className="flex items-center text-gray-700 dark:text-gray-300">
                           <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                          Invoice generation
+                          Invoice tracking
+                        </li>
+                        <li className="flex items-center text-gray-700 dark:text-gray-300">
+                          <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                          Basic expense tracking
                         </li>
                       </ul>
                       <button
@@ -662,7 +693,11 @@ export default function Settings() {
                         </li>
                         <li className="flex items-center text-gray-700 dark:text-gray-300">
                           <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                          Custom invoices
+                          Advanced invoice features
+                        </li>
+                        <li className="flex items-center text-gray-700 dark:text-gray-300">
+                          <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                          Unlimited expense tracking
                         </li>
                         <li className="flex items-center text-gray-700 dark:text-gray-300">
                           <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
@@ -690,6 +725,27 @@ export default function Settings() {
                       )}
                     </div>
                   </div>
+                  
+                  {/* Billing History */}
+                  <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Billing History</h3>
+                    <div className="space-y-3">
+                      {isPro ? (
+                        <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white">Pro Plan - January 2025</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Paid on Jan 1, 2025</p>
+                          </div>
+                          <span className="text-gray-900 dark:text-white font-semibold">$9.99</span>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <p className="text-gray-500 dark:text-gray-400">No billing history on free plan</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  }
                 </div>
               )}
 

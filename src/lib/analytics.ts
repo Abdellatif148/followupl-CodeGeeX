@@ -237,7 +237,7 @@ class AnalyticsService {
   /**
    * Track business-specific events
    */
-  public trackBusiness(action: string, category: 'client' | 'invoice' | 'reminder', details?: Record<string, any>): void {
+  public trackBusiness(action: string, category: 'client' | 'invoice' | 'reminder' | 'expense', details?: Record<string, any>): void {
     this.trackEvent({
       action,
       category: `business_${category}`,
@@ -294,7 +294,7 @@ export const analytics = new AnalyticsService()
 export const trackPageView = (data?: PageViewData) => analytics.trackPageView(data)
 export const trackEvent = (event: AnalyticsEvent) => analytics.trackEvent(event)
 export const trackAuth = (action: 'login' | 'signup' | 'logout', method?: string) => analytics.trackAuth(action, method)
-export const trackBusiness = (action: string, category: 'client' | 'invoice' | 'reminder', details?: Record<string, any>) => analytics.trackBusiness(action, category, details)
+export const trackBusiness = (action: string, category: 'client' | 'invoice' | 'reminder' | 'expense', details?: Record<string, any>) => analytics.trackBusiness(action, category, details)
 export const trackFeature = (feature: string, action: string, details?: Record<string, any>) => analytics.trackFeature(feature, action, details)
 export const setUserProperties = (properties: UserProperties) => analytics.setUserProperties(properties)
 

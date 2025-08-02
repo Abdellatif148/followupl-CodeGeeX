@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { User } from '@supabase/supabase-js'
-import { useAuthAnalytics } from '../hooks/useAnalytics'
 
 interface ProtectedRouteProps {
   children: React.ReactNode

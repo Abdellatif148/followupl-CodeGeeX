@@ -57,10 +57,16 @@ export default function ProgressCharts() {
             invoices: index <= currentMonth ? Math.floor(Math.random() * 15) + 3 : 0
           }))
 
+          const expenseData = months.map((month, index) => ({
+            name: month,
+            expenses: index <= currentMonth ? Math.floor(Math.random() * 3000) + 500 : 0
+          }))
+
           setChartData({
             clients: clientData,
             revenue: revenueData,
-            invoices: invoiceData
+            invoices: invoiceData,
+            expenses: expenseData
           })
         }
       } catch (error) {
@@ -75,7 +81,7 @@ export default function ProgressCharts() {
 
   // Simple bar chart component using CSS
   const BarChart = ({ data, title, color }: { data: any[], title: string, color: string }) => {
-    const maxValue = Math.max(...data.map((d: any) => d.clients || d.revenue || d.invoices))
+    const maxValue = Math.max(...data.map((d: any) => d.clients || d.revenue || d.invoices || d.expenses))
 
     return (
       <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
@@ -95,12 +101,13 @@ export default function ProgressCharts() {
                   {title === 'Clients' && `${item.clients} clients`}
                   {title === 'Revenue' && `$${item.revenue}`}
                   {title === 'Invoices' && `${item.invoices} invoices`}
+                  {title === 'Expenses' && `$${item.expenses}`}
                 </span>
               </div>
               <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
                 <div 
                   className={`h-2.5 rounded-full ${color}`}
-                  style={{ width: `${(item.clients || item.revenue || item.invoices) / maxValue * 100}%` }}
+                  style={{ width: `${(item.clients || item.revenue || item.invoices || item.expenses) / maxValue * 100}%` }}
                 ></div>
               </div>
             </div>
@@ -160,7 +167,7 @@ export default function ProgressCharts() {
         ) : (
           <div className="space-y-8">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -196,10 +203,22 @@ export default function ProgressCharts() {
                   <Calendar className="w-10 h-10 text-purple-500 dark:text-purple-400" />
                 </div>
               </div>
+
+              <div className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border border-red-200 dark:border-red-800 rounded-2xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-red-700 dark:text-red-400 mb-1">Total Expenses</p>
+                    <p className="text-2xl font-bold text-red-900 dark:text-red-300">
+                      ${chartData ? chartData.expenses?.reduce((acc: number, curr: any) => acc + curr.expenses, 0).toLocaleString() : 0}
+                    </p>
+                  </div>
+                  <TrendingDown className="w-10 h-10 text-red-500 dark:text-red-400" />
+                </div>
+              </div>
             </div>
 
             {/* Charts */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <BarChart 
                 data={chartData?.clients || []} 
                 title="Clients" 
@@ -214,6 +233,11 @@ export default function ProgressCharts() {
                 data={chartData?.invoices || []} 
                 title="Invoices" 
                 color="bg-purple-500" 
+              />
+              <BarChart 
+                data={chartData?.expenses || []} 
+                title="Expenses" 
+                color="bg-red-500" 
               />
             </div>
 
@@ -252,6 +276,16 @@ export default function ProgressCharts() {
                   </div>
                   <div className="text-right">
                     <p className="text-xl font-bold text-purple-600 dark:text-purple-400">+{Math.floor(Math.random() * 35) + 8}%</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-red-50 dark:bg-red-900/20 rounded-xl">
+                  <div>
+                    <p className="text-gray-700 dark:text-gray-300">Expense Growth</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Last 6 months</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xl font-bold text-red-600 dark:text-red-400">+{Math.floor(Math.random() * 25) + 5}%</p>
                   </div>
                 </div>
               </div>

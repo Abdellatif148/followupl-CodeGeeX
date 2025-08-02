@@ -25,6 +25,7 @@
     "clients": "Clients",
     "reminders": "Reminders",
     "invoices": "Invoices",
+    "expenses": "Expenses",
     "settings": "Settings"
   },
   "dashboard": {

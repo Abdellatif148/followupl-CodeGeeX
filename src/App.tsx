@@ -10,13 +10,13 @@ import Clients from './pages/Clients'
 import AddClient from './pages/AddClient'
 import Reminders from './pages/Reminders'
 import Invoices from './pages/Invoices'
+import Expenses from './pages/Expenses'
+import AddExpense from './pages/AddExpense'
 import Settings from './pages/Settings'
 import Upgrade from './pages/Upgrade'
 import ProgressCharts from './pages/ProgressCharts'
 import TermsOfService from './pages/TermsOfService'
 import PrivacyPolicy from './pages/PrivacyPolicy'
-import Support from './pages/Support'
-import ProtectedRoute from './components/ProtectedRoute'
 
 function App() {
   return (
@@ -60,6 +60,16 @@ function App() {
         <Route path="/invoices" element={
           <ProtectedRoute>
             <Invoices />
+          </ProtectedRoute>
+        } />
+        <Route path="/expenses" element={
+          <ProtectedRoute>
+            <Expenses />
+          </ProtectedRoute>
+        } />
+        <Route path="/expenses/add" element={
+          <ProtectedRoute>
+            <AddExpense />
           </ProtectedRoute>
         } />
         <Route path="/settings" element={

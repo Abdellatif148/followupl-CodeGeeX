@@ -192,7 +192,7 @@ export function useAnalytics(config: UseAnalyticsConfig = {}): UseAnalyticsRetur
    */
   const trackBusinessAction = useCallback((
     action: string, 
-    type: 'client' | 'invoice' | 'reminder', 
+    type: 'client' | 'invoice' | 'reminder' | 'expense', 
     details?: Record<string, any>
   ) => {
     handleTrackEvent({
@@ -286,10 +286,15 @@ export function useBusinessAnalytics() {
     trackBusinessAction(action, 'reminder', details)
   }, [trackBusinessAction])
 
+  const trackExpenseAction = useCallback((action: string, details?: Record<string, any>) => {
+    trackBusinessAction(action, 'expense', details)
+  }, [trackBusinessAction])
+
   return {
     trackClientAction,
     trackInvoiceAction,
-    trackReminderAction
+    trackReminderAction,
+    trackExpenseAction
   }
 }
 

@@ -4,8 +4,6 @@ import { useNavigate } from 'react-router-dom'
 import { clientsApi, remindersApi, invoicesApi } from '../lib/database'
 import { supabase } from '../lib/supabase'
 import { useCurrency } from '../hooks/useCurrency'
-
-interface SearchResult {
   id: string
   type: 'client' | 'reminder' | 'invoice'
   title: string

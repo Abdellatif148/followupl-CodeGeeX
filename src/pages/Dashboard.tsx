@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { 
   Users, Bell, FileText, DollarSign, TrendingUp, Clock,
-  Plus, ArrowRight, AlertTriangle, CheckCircle
+  Plus, ArrowRight, AlertTriangle, CheckCircle, TrendingDown
 } from 'lucide-react'
 import Layout from '../components/Layout'
 import { dashboardApi } from '../lib/database'
@@ -20,6 +20,9 @@ interface DashboardStats {
   recentClients: any[]
   upcomingReminders: any[]
   recentInvoices: any[]
+  totalExpenses: number
+  totalRevenue: number
+  recentExpenses: any[]
 }
 
 export default function Dashboard() {
@@ -101,7 +104,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
           <div className="bg-gradient-to-br from-white to-blue-50 dark:from-gray-800 dark:to-blue-900/20 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
@@ -166,6 +169,23 @@ export default function Dashboard() {
             <div className="mt-4">
               <Link to="/invoices?filter=overdue" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center">
                 View overdue <ArrowRight className="w-4 h-4 ml-1" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-white to-red-50 dark:from-gray-800 dark:to-red-900/20 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Expenses</p>
+                <p className="text-3xl font-bold text-red-600 dark:text-red-400">{formatCurrency(stats?.totalExpenses || 0)}</p>
+              </div>
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-xl flex items-center justify-center">
+                <TrendingDown className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <Link to="/expenses" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center">
+                View expenses <ArrowRight className="w-4 h-4 ml-1" />
               </Link>
             </div>
           </div>

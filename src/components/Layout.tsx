@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { 
   Home, Users, Bell, FileText, Settings, LogOut, Menu, X,
-  User, Search, Plus
+  User, Search, Plus, TrendingDown
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import DarkModeToggle from './DarkModeToggle'
@@ -34,6 +34,7 @@ export default function Layout({ children }: LayoutProps) {
     { name: t('navigation.clients'), href: '/clients', icon: Users },
     { name: t('navigation.reminders'), href: '/reminders', icon: Bell },
     { name: t('navigation.invoices'), href: '/invoices', icon: FileText },
+    { name: t('navigation.expenses'), href: '/expenses', icon: TrendingDown },
     { name: t('navigation.settings'), href: '/settings', icon: Settings },
   ]
 

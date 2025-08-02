@@ -9,6 +9,14 @@ export default function ProgressCharts() {
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [subscriptionPlan, setSubscriptionPlan] = useState<string>('free')
+  const [isProLocal, setIsProLocal] = useState<boolean>(() => {
+    try {
+      const raw = localStorage.getItem('followuply_is_pro')
+      return raw ? JSON.parse(raw) === true : false
+    } catch {
+      return false
+    }
+  })
   const [chartData, setChartData] = useState<any>(null)
 
   useEffect(() => {
@@ -133,7 +141,7 @@ export default function ProgressCharts() {
           </p>
         </div>
 
-        {subscriptionPlan === 'free' ? (
+        {subscriptionPlan === 'free' && !isProLocal ? (
           <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-8 text-center">
             <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/20 dark:to-purple-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
               <BarChart3 className="w-10 h-10 text-blue-600 dark:text-blue-400" />

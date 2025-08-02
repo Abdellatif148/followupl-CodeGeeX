@@ -12,6 +12,7 @@ import { supabase } from '../lib/supabase'
 import { useDarkMode } from '../hooks/useDarkMode'
 import { useCurrency } from '../hooks/useCurrency'
 import { useAnalytics } from '../hooks/useAnalytics'
+import { useProPlan } from '../hooks/useProPlan'
 
 export default function Settings() {
   const { t, i18n } = useTranslation()
@@ -32,6 +33,7 @@ export default function Settings() {
   const { isDarkMode, toggleDarkMode } = useDarkMode()
   const { currency, updateCurrency, refreshCurrency } = useCurrency()
   const analytics = useAnalytics()
+  const { isPro, setPro } = useProPlan()
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -251,22 +253,12 @@ export default function Settings() {
       
       // Step 2: Delete the authentication account
       try {
-        // Use the user delete method (more reliable for self-deletion)
-        const { error: deleteError } = await supabase.auth.deleteUser()
-        
-        if (deleteError) {
-          console.error('❌ Auth deletion failed:', deleteError.message)
-          // Force sign out if deletion fails
-          await supabase.auth.signOut()
-          console.log('🔐 Forced sign out due to deletion failure')
-        } else {
-          console.log('✅ Authentication account deleted successfully')
-        }
-      } catch (error) {
-        console.error('❌ Auth deletion error:', error)
-        // Force sign out as fallback
+        // Supabase JS v2 client does not expose deleteUser() on client auth
+        // For self-service flows, sign out the user after data cleanup.
         await supabase.auth.signOut()
-        console.log('🔐 Forced sign out due to error')
+        console.log('🔐 Signed out after data cleanup')
+      } catch (error) {
+        console.error('❌ Auth sign out error:', error)
       }
 
       // Step 3: Clear all local data
@@ -307,6 +299,7 @@ export default function Settings() {
     { id: 'account', name: 'Account', icon: Mail },
     { id: 'preferences', name: 'Preferences', icon: Globe },
     { id: 'billing', name: 'Billing', icon: CreditCard },
+    { id: 'pro', name: 'Pro (Mock)', icon: CreditCard },
     { id: 'danger', name: 'Danger Zone', icon: Trash2 },
   ]
 
@@ -429,7 +422,7 @@ export default function Settings() {
                         {displayName}
                       </h3>
                       <p className="text-gray-500 dark:text-gray-400">{user?.email}</p>
-                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">Free Plan</p>
+                      <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">{isPro ? 'Pro Plan' : 'Free Plan'}</p>
                     </div>
                   </div>
 
@@ -609,8 +602,8 @@ export default function Settings() {
                           <h3 className="text-xl font-bold text-blue-900 dark:text-blue-300">Free Plan</h3>
                           <p className="text-blue-700 dark:text-blue-400">Basic features for everyone</p>
                         </div>
-                        <span className="px-4 py-2 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 rounded-lg font-semibold">
-                          Active
+                        <span className={`px-4 py-2 rounded-lg font-semibold ${!isPro ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}`}>
+                          {!isPro ? 'Active' : 'Available'}
                         </span>
                       </div>
                       <div className="mb-6">
@@ -631,8 +624,12 @@ export default function Settings() {
                           Invoice generation
                         </li>
                       </ul>
-                      <button className="w-full py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium" disabled>
-                        Current Plan
+                      <button
+                        onClick={() => setPro(false)}
+                        className={`w-full py-3 rounded-xl font-medium ${!isPro ? 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 cursor-not-allowed' : 'bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition'}`}
+                        disabled={!isPro}
+                      >
+                        {!isPro ? 'Current Plan' : 'Switch to Free'}
                       </button>
                     </div>
 
@@ -646,6 +643,9 @@ export default function Settings() {
                           <h3 className="text-xl font-bold text-purple-900 dark:text-purple-300">Pro Plan</h3>
                           <p className="text-purple-700 dark:text-purple-400">Advanced features for professionals</p>
                         </div>
+                        <span className={`px-4 py-2 rounded-lg font-semibold ${isPro ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'}`}>
+                          {isPro ? 'Active' : 'Available'}
+                        </span>
                       </div>
                       <div className="mb-6">
                         <span className="text-3xl font-bold text-gray-900 dark:text-white">$9.99</span>
@@ -674,12 +674,57 @@ export default function Settings() {
                         </li>
                       </ul>
                       <button 
-                        onClick={() => navigate('/upgrade')}
-                        className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium hover:from-purple-700 hover:to-pink-700 transition-all duration-200"
+                        onClick={() => setPro(true)}
+                        className={`w-full py-3 rounded-xl font-medium ${isPro ? 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700 transition-all duration-200'}`}
+                        disabled={isPro}
                       >
-                        Upgrade to Pro
+                        {isPro ? 'Current Plan' : 'Subscribe to Pro'}
                       </button>
+                      {!isPro && (
+                        <button
+                          onClick={() => navigate('/upgrade')}
+                          className="w-full mt-3 py-3 border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 rounded-xl font-medium hover:bg-purple-50 dark:hover:bg-purple-900/20 transition"
+                        >
+                          Learn more
+                        </button>
+                      )}
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'pro' && (
+                <div className="p-8 space-y-6">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Pro Subscription (Mock)</h2>
+                  <p className="text-gray-600 dark:text-gray-400">Toggle a local Pro flag to preview premium features like Progress Charts.</p>
+
+                  <div className="flex items-center justify-between p-6 bg-gray-50 dark:bg-gray-700 rounded-xl">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Pro status</h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Current: {isPro ? 'Pro' : 'Free'}</p>
+                    </div>
+                    <button
+                      onClick={() => setPro(!isPro)}
+                      className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors duration-200 ${isPro ? 'bg-purple-600' : 'bg-gray-300'}`}
+                    >
+                      <span
+                        className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform duration-200 ${isPro ? 'translate-x-7' : 'translate-x-1'}`}
+                      />
+                    </button>
+                  </div>
+
+                  <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Pro features</h3>
+                    <ul className="space-y-3">
+                      <li className="flex items-center text-gray-700 dark:text-gray-300">
+                        <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                        Progress Charts (Pro-only)
+                      </li>
+                      <li className="flex items-center text-gray-700 dark:text-gray-300">
+                        <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                        Priority support
+                      </li>
+                    </ul>
                   </div>
                 </div>
               )}

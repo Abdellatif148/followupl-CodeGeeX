@@ -4,8 +4,27 @@ import type {
   Reminder, ReminderInsert, ReminderUpdate,
   Invoice, InvoiceInsert, InvoiceUpdate,
   Profile, ProfileInsert, ProfileUpdate,
-  Notification, NotificationInsert, NotificationUpdate
+  Notification, NotificationInsert, NotificationUpdate,
+  Expense, ExpenseInsert, ExpenseUpdate
 } from '../types/database'
+
+// Define types for joined data
+interface ReminderWithClient extends Reminder {
+  clients?: {
+    id: string
+    name: string
+    platform: string
+  } | null
+}
+
+interface InvoiceWithClient extends Invoice {
+  clients?: {
+    id: string
+    name: string
+    email: string | null
+    platform: string
+  } | null
+}
 
 // Client operations
 export const clientsApi = {
@@ -68,7 +87,7 @@ export const clientsApi = {
       .from('clients')
       .select('*')
       .eq('user_id', userId)
-      .or(`name.ilike.%${query}%,email.ilike.%${query}%,notes.ilike.%${query}%`)
+      .or(`name.ilike.%${query}%,email.ilike.%${query}%,company.ilike.%${query}%,notes.ilike.%${query}%`)
       .order('created_at', { ascending: false })
     
     if (error) throw error
@@ -250,219 +269,399 @@ export const remindersApi = {
 // Invoice operations
 export const invoicesApi = {
   async getAll(userId: string) {
-    const { data, error } = await supabase
-      .from('invoices')
-      .select(`
-        *,
-        clients (
-          id,
-          name,
-          email,
-          platform
-        )
-      `)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return data
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            email,
+            platform
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error in invoicesApi.getAll:', error)
+      throw error
+    }
   },
 
   async getOverdue(userId: string) {
-    const today = new Date().toISOString().split('T')[0]
-    
-    const { data, error } = await supabase
-      .from('invoices')
-      .select(`
-        *,
-        clients (
-          id,
-          name,
-          email,
-          platform
-        )
-      `)
-      .eq('user_id', userId)
-      .in('status', ['sent', 'pending'])
-      .lt('due_date', today)
-      .order('due_date', { ascending: true })
-    
-    if (error) throw error
-    return data
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      
+      const { data, error } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            email,
+            platform
+          )
+        `)
+        .eq('user_id', userId)
+        .in('status', ['unpaid', 'pending'])
+        .lt('due_date', today)
+        .order('due_date', { ascending: true })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error in invoicesApi.getOverdue:', error)
+      throw error
+    }
   },
 
   async create(invoice: InvoiceInsert) {
-    const { data, error } = await supabase
-      .from('invoices')
-      .insert(invoice)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Invoice
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .insert(invoice)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data as Invoice
+    } catch (error) {
+      console.error('Error in invoicesApi.create:', error)
+      throw error
+    }
   },
 
   async update(id: string, updates: InvoiceUpdate) {
-    const { data, error } = await supabase
-      .from('invoices')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Invoice
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data as Invoice
+    } catch (error) {
+      console.error('Error in invoicesApi.update:', error)
+      throw error
+    }
   },
 
   async delete(id: string) {
-    const { error } = await supabase
-      .from('invoices')
-      .delete()
-      .eq('id', id)
-    
-    if (error) throw error
+    try {
+      const { error } = await supabase
+        .from('invoices')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error in invoicesApi.delete:', error)
+      throw error
+    }
   },
 
   async markPaid(id: string, paymentMethod?: string) {
-    const { data, error } = await supabase
-      .from('invoices')
-      .update({ 
-        status: 'paid',
-        payment_date: new Date().toISOString(),
-        payment_method: paymentMethod
-      })
-      .eq('id', id)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Invoice
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .update({ 
+          status: 'paid',
+          payment_date: new Date().toISOString(),
+          payment_method: paymentMethod,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data as Invoice
+    } catch (error) {
+      console.error('Error in invoicesApi.markPaid:', error)
+      throw error
+    }
+  }
+}
+
+// Expense operations
+export const expensesApi = {
+  async getAll(userId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select(`
+          *,
+          clients (
+            id,
+            name
+          )
+        `)
+        .eq('user_id', userId)
+        .order('expense_date', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error in expensesApi.getAll:', error)
+      throw error
+    }
+  },
+
+  async create(expense: ExpenseInsert) {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert(expense)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data as Expense
+    } catch (error) {
+      console.error('Error in expensesApi.create:', error)
+      throw error
+    }
+  },
+
+  async update(id: string, updates: ExpenseUpdate) {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data as Expense
+    } catch (error) {
+      console.error('Error in expensesApi.update:', error)
+      throw error
+    }
+  },
+
+  async delete(id: string) {
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error in expensesApi.delete:', error)
+      throw error
+    }
+  },
+
+  async getByCategory(userId: string, category: string) {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('category', category)
+        .order('expense_date', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error in expensesApi.getByCategory:', error)
+      throw error
+    }
   }
 }
 
 // Profile operations
 export const profilesApi = {
   async get(userId: string) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle()
-    
-    if (error) throw error
-    return data as Profile | null
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle()
+      
+      if (error) throw error
+      return data as Profile | null
+    } catch (error) {
+      console.error('Error in profilesApi.get:', error)
+      throw error
+    }
   },
 
   async create(profile: ProfileInsert) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .insert(profile)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Profile
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert(profile)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data as Profile
+    } catch (error) {
+      console.error('Error in profilesApi.create:', error)
+      throw error
+    }
   },
 
   async update(userId: string, updates: ProfileUpdate) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', userId)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Profile
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data as Profile
+    } catch (error) {
+      console.error('Error in profilesApi.update:', error)
+      throw error
+    }
   }
 }
 
 // Notification operations
 export const notificationsApi = {
   async getAll(userId: string) {
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return data as Notification[]
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data as Notification[]
+    } catch (error) {
+      console.error('Error in notificationsApi.getAll:', error)
+      throw error
+    }
   },
 
   async getUnread(userId: string) {
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('is_read', false)
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return data as Notification[]
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_read', false)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data as Notification[]
+    } catch (error) {
+      console.error('Error in notificationsApi.getUnread:', error)
+      throw error
+    }
   },
 
   async markAsRead(id: string) {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('id', id)
-    
-    if (error) throw error
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error in notificationsApi.markAsRead:', error)
+      throw error
+    }
   },
 
   async markAllAsRead(userId: string) {
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('user_id', userId)
-      .eq('is_read', false)
-    
-    if (error) throw error
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', userId)
+        .eq('is_read', false)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error in notificationsApi.markAllAsRead:', error)
+      throw error
+    }
   },
 
   async create(notification: NotificationInsert) {
-    const { data, error } = await supabase
-      .from('notifications')
-      .insert(notification)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Notification
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert(notification)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data as Notification
+    } catch (error) {
+      console.error('Error in notificationsApi.create:', error)
+      throw error
+    }
   }
 }
 
 // Dashboard stats
 export const dashboardApi = {
   async getStats(userId: string) {
-    const [clients, reminders, invoices] = await Promise.all([
-      clientsApi.getAll(userId),
-      remindersApi.getUpcoming(userId),
-      invoicesApi.getAll(userId)
-    ])
+    try {
+      const [clients, reminders, invoices, expenses] = await Promise.all([
+        clientsApi.getAll(userId),
+        remindersApi.getUpcoming(userId),
+        invoicesApi.getAll(userId),
+        expensesApi.getAll(userId)
+      ])
 
-    const activeClients = clients.filter(c => c.status === 'active').length
-    const pendingReminders = reminders.filter(r => r.status === 'pending').length
-    const pendingInvoices = invoices.filter(i => ['sent', 'pending'].includes(i.status))
-    const overdueInvoices = invoices.filter(i => {
-      const today = new Date().toISOString().split('T')[0]
-      return ['sent', 'pending'].includes(i.status) && i.due_date < today
-    })
+      const activeClients = clients.filter(c => c.status === 'active').length
+      const pendingReminders = reminders.filter(r => ['pending', 'active'].includes(r.status)).length
+      const pendingInvoices = invoices.filter(i => ['unpaid', 'pending'].includes(i.status))
+      const overdueInvoices = invoices.filter(i => {
+        const today = new Date().toISOString().split('T')[0]
+        return ['unpaid', 'pending'].includes(i.status) && i.due_date < today
+      })
 
-    const totalPendingAmount = pendingInvoices.reduce((sum, inv) => sum + inv.amount, 0)
-    const totalOverdueAmount = overdueInvoices.reduce((sum, inv) => sum + inv.amount, 0)
+      const totalPendingAmount = pendingInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0)
+      const totalOverdueAmount = overdueInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0)
+      const totalExpenses = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0)
+      const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((sum, inv) => sum + (inv.amount || 0), 0)
 
-    return {
-      activeClients,
-      pendingReminders,
-      pendingInvoicesCount: pendingInvoices.length,
-      overdueInvoicesCount: overdueInvoices.length,
-      totalPendingAmount,
-      totalOverdueAmount,
-      recentClients: clients.slice(0, 5),
-      upcomingReminders: reminders.slice(0, 5),
-      recentInvoices: invoices.slice(0, 5)
+      return {
+        activeClients,
+        pendingReminders,
+        pendingInvoicesCount: pendingInvoices.length,
+        overdueInvoicesCount: overdueInvoices.length,
+        totalPendingAmount,
+        totalOverdueAmount,
+        totalExpenses,
+        totalRevenue,
+        recentClients: clients.slice(0, 5),
+        upcomingReminders: reminders.slice(0, 5),
+        recentInvoices: invoices.slice(0, 5),
+        recentExpenses: expenses.slice(0, 5)
+      }
+    } catch (error) {
+      console.error('Error in dashboardApi.getStats:', error)
+      throw error
     }
   }
 }

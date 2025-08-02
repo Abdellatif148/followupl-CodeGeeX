@@ -250,6 +250,62 @@ export interface Database {
       }
     }
   }
+  expenses: {
+    Row: {
+      id: string
+      user_id: string
+      client_id: string | null
+      title: string
+      description: string | null
+      amount: number
+      currency: string
+      category: string
+      subcategory: string | null
+      expense_date: string
+      payment_method: string | null
+      tax_deductible: boolean
+      status: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
+      tags: string[] | null
+      created_at: string
+      updated_at: string
+    }
+    Insert: {
+      id?: string
+      user_id: string
+      client_id?: string | null
+      title: string
+      description?: string | null
+      amount: number
+      currency: string
+      category: string
+      subcategory?: string | null
+      expense_date: string
+      payment_method?: string | null
+      tax_deductible?: boolean
+      status?: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
+      tags?: string[] | null
+      created_at?: string
+      updated_at?: string
+    }
+    Update: {
+      id?: string
+      user_id?: string
+      client_id?: string | null
+      title?: string
+      description?: string | null
+      amount?: number
+      currency?: string
+      category?: string
+      subcategory?: string | null
+      expense_date?: string
+      payment_method?: string | null
+      tax_deductible?: boolean
+      status?: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
+      tags?: string[] | null
+      created_at?: string
+      updated_at?: string
+    }
+  }
 }
 
 export type Client = Database['public']['Tables']['clients']['Row']
@@ -271,3 +327,7 @@ export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
 export type Notification = Database['public']['Tables']['notifications']['Row']
 export type NotificationInsert = Database['public']['Tables']['notifications']['Insert']
 export type NotificationUpdate = Database['public']['Tables']['notifications']['Update']
+
+export type Expense = Database['public']['Tables']['expenses']['Row']
+export type ExpenseInsert = Database['public']['Tables']['expenses']['Insert']
+export type ExpenseUpdate = Database['public']['Tables']['expenses']['Update']

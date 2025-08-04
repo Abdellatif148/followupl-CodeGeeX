@@ -1,258 +1,190 @@
 import React, { useState, useEffect } from 'react'
-import { Crown, Check, Zap, TrendingUp, Users, FileText, Shield, Headphones } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { CheckCircle, CreditCard, ArrowLeft, Loader2 } from 'lucide-react'
 import Layout from '../components/Layout'
-import { useAuth } from '../hooks/useAuth'
-import { profilesApi } from '../lib/database'
+import { supabase } from '../lib/supabase'
 
 export default function Upgrade() {
-  const { user } = useAuth()
-  const [currentPlan, setCurrentPlan] = useState<'free' | 'pro' | 'super_pro'>('free')
-  const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
+  const [loading, setLoading] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
 
   useEffect(() => {
-    loadUserPlan()
-  }, [user])
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+    }
 
-  const loadUserPlan = async () => {
-    if (!user) return
+    getUser()
+  }, [])
+
+  const handleUpgrade = async () => {
+    setLoading(true)
+    setError(null)
 
     try {
-      const profile = await profilesApi.get(user.id)
-      setCurrentPlan(profile?.plan || 'free')
-    } catch (error) {
-      console.error('Error loading user plan:', error)
+      // In a real implementation, this would integrate with a payment processor
+      // For now, we'll simulate the upgrade process
+
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 2000))
+
+      // Update user profile to indicate Pro subscription
+      if (user) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ subscription_plan: 'pro' })
+          .eq('id', user.id)
+
+        if (error) throw error
+      }
+
+      setSuccess(true)
+    } catch (err) {
+      console.error('Upgrade error:', err)
+      setError('Failed to process upgrade. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  const plans = [
-    {
-      id: 'free',
-      name: 'Free',
-      price: '$0',
-      period: 'forever',
-      description: 'Perfect for getting started',
-      features: [
-        'Up to 20 clients',
-        'Basic reminders',
-        'Invoice tracking',
-        'Email support',
-        'Mobile app access'
-      ],
-      limitations: [
-        'Limited to 20 clients',
-        'Basic features only',
-        'Email support only'
-      ],
-      buttonText: 'Current Plan',
-      buttonDisabled: true,
-      popular: false
-    },
-    {
-      id: 'pro',
-      name: 'Pro',
-      price: '$9.99',
-      period: 'per month',
-      description: 'Best for growing freelancers',
-      features: [
-        'Unlimited clients',
-        'AI-powered reminders',
-        'Advanced invoice features',
-        'Expense tracking',
-        'Progress charts & analytics',
-        'Priority email support',
-        'Export data (PDF/CSV)',
-        'Custom tags & categories'
-      ],
-      limitations: [],
-      buttonText: currentPlan === 'pro' ? 'Current Plan' : 'Upgrade to Pro',
-      buttonDisabled: currentPlan === 'pro',
-      popular: true
-    },
-    {
-      id: 'super_pro',
-      name: 'Super Pro',
-      price: '$19.99',
-      period: 'per month',
-      description: 'For established freelance businesses',
-      features: [
-        'Everything in Pro',
-        'Advanced analytics dashboard',
-        'Custom integrations',
-        'White-label options',
-        'Team collaboration',
-        '24/7 phone support',
-        'Custom reporting',
-        'API access'
-      ],
-      limitations: [],
-      buttonText: currentPlan === 'super_pro' ? 'Current Plan' : 'Upgrade to Super Pro',
-      buttonDisabled: currentPlan === 'super_pro',
-      popular: false
-    }
-  ]
-
-  if (loading) {
-    return (
-      <Layout>
-        <div className="p-6">
-          <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-96 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </Layout>
-    )
-  }
-
   return (
     <Layout>
-      <div className="p-6 space-y-8">
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Choose Your Plan
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Unlock powerful features to grow your freelance business and never miss a payment again
-          </p>
-        </div>
+      <div className="p-6 max-w-4xl mx-auto">
+        <button 
+          onClick={() => navigate('/settings')}
+          className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-8"
+        >
+          <ArrowLeft className="w-5 h-5 mr-2" />
+          Back to Settings
+        </button>
 
-        {/* Current Plan Banner */}
-        {currentPlan !== 'free' && (
-          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white text-center">
-            <div className="flex items-center justify-center mb-2">
-              <Crown className="w-6 h-6 mr-2" />
-              <h3 className="text-lg font-semibold">
-                You're on the {currentPlan === 'pro' ? 'Pro' : 'Super Pro'} Plan
-              </h3>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-8">
+          <div className="text-center mb-10">
+            <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+              <CreditCard className="w-10 h-10 text-purple-600 dark:text-purple-400" />
             </div>
-            <p className="opacity-90">
-              Thank you for supporting FollowUply! You have access to all premium features.
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Upgrade to Pro</h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Unlock premium features and take your business to the next level
             </p>
           </div>
-        )}
 
-        {/* Plans Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {plans.map((plan) => (
-            <div
-              key={plan.id}
-              className={`relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg border-2 transition-all duration-300 hover:shadow-xl ${
-                plan.popular
-                  ? 'border-blue-500 dark:border-blue-400 scale-105'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-              } ${currentPlan === plan.id ? 'ring-2 ring-green-500 ring-opacity-50' : ''}`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg">
-                    Most Popular
-                  </span>
-                </div>
-              )}
-
-              {currentPlan === plan.id && (
-                <div className="absolute -top-4 right-4">
-                  <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg">
-                    Current
-                  </span>
-                </div>
-              )}
-
-              <div className="p-8">
-                <div className="text-center mb-8">
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                    {plan.name}
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-4">
-                    {plan.description}
+          {success ? (
+            <div className="text-center py-10">
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Upgrade Successful!</h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-8">
+                Thank you for upgrading to Pro! You now have access to all premium features.
+              </p>
+              <button 
+                onClick={() => navigate('/dashboard')}
+                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium hover:from-purple-700 hover:to-pink-700 transition-all duration-200"
+              >
+                Go to Dashboard
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                {/* Feature 1 */}
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
+                  <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center mb-4">
+                    <CheckCircle className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Unlimited Clients</h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Add as many clients as you need without any limitations
                   </p>
-                  <div className="mb-4">
-                    <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                      {plan.price}
-                    </span>
-                    <span className="text-gray-600 dark:text-gray-400 ml-2">
-                      {plan.period}
-                    </span>
+                </div>
+
+                {/* Feature 2 */}
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
+                  <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center mb-4">
+                    <CheckCircle className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Progress Charts</h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Visualize your business growth with interactive charts and graphs
+                  </p>
+                </div>
+
+                {/* Feature 3 */}
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
+                  <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center mb-4">
+                    <CheckCircle className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Priority Support</h3>
+                  <p className="text-gray-600 dark:text-gray-400">
+                    Get help faster with our priority customer support
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-2xl p-8 mb-8">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h3 className="text-2xl font-bold text-purple-900 dark:text-purple-300 mb-2">Pro Plan</h3>
+                    <p className="text-purple-700 dark:text-purple-400 mb-4">Billed monthly at $9.99/month</p>
+                    <ul className="space-y-2">
+                      <li className="flex items-center text-purple-800 dark:text-purple-300">
+                        <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                        Unlimited clients
+                      </li>
+                      <li className="flex items-center text-purple-800 dark:text-purple-300">
+                        <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                        Advanced reminders
+                      </li>
+                      <li className="flex items-center text-purple-800 dark:text-purple-300">
+                        <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                        Custom invoices
+                      </li>
+                      <li className="flex items-center text-purple-800 dark:text-purple-300">
+                        <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                        Progress chart graphs
+                      </li>
+                      <li className="flex items-center text-purple-800 dark:text-purple-300">
+                        <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                        Priority support
+                      </li>
+                    </ul>
+                  </div>
+                  <div className="mt-6 md:mt-0 text-center">
+                    <div className="text-4xl font-bold text-purple-900 dark:text-purple-300 mb-2">
+                      $9.99<span className="text-lg font-normal text-purple-700 dark:text-purple-400">/month</span>
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                <div className="space-y-4 mb-8">
-                  <h4 className="font-semibold text-gray-900 dark:text-white">Features included:</h4>
-                  <ul className="space-y-3">
-                    {plan.features.map((feature, index) => (
-                      <li key={index} className="flex items-start space-x-3">
-                        <Check className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                        <span className="text-gray-700 dark:text-gray-300 text-sm">
-                          {feature}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+              {error && (
+                <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+                  <p className="text-red-700 dark:text-red-300">{error}</p>
                 </div>
+              )}
 
-                <button
-                  disabled={plan.buttonDisabled}
-                  className={`w-full py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-200 ${
-                    plan.buttonDisabled
-                      ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                      : plan.popular
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:scale-105'
-                      : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
-                  }`}
+              <div className="flex justify-center">
+                <button 
+                  onClick={handleUpgrade}
+                  disabled={loading}
+                  className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center"
                 >
-                  {plan.buttonText}
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    'Upgrade Now - $9.99/month'
+                  )}
                 </button>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {/* FAQ Section */}
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white text-center mb-8">
-            Frequently Asked Questions
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
-                Can I change plans anytime?
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
-                Yes, you can upgrade or downgrade your plan at any time. Changes take effect immediately.
-              </p>
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
-                Is there a free trial?
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
-                The Free plan is available forever. You can upgrade to Pro or Super Pro anytime to unlock more features.
-              </p>
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
-                What payment methods do you accept?
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
-                We accept all major credit cards, PayPal, and bank transfers for annual plans.
-              </p>
-            </div>
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
-                Can I export my data?
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm">
-                Yes, Pro and Super Pro plans include data export in PDF and CSV formats.
-              </p>
-            </div>
-          </div>
+            </>
+          )}
         </div>
       </div>
     </Layout>

@@ -1,7 +1,6 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { useState, useEffect, createContext, useContext } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { profilesApi } from '../lib/database'
 
 interface AuthContextType {
   user: User | null
@@ -15,19 +14,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
-}
-
-interface AuthProviderProps {
-  children: ReactNode
-}
-
-export function AuthProvider({ children }: AuthProviderProps) {
+export function useAuth(): AuthContextType {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
@@ -43,32 +30,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         
         if (error) {
           console.error('Error getting session:', error)
-          return
         }
-
+        
         if (mounted) {
           setSession(session)
           setUser(session?.user ?? null)
-          
-          // Create profile if user exists but no profile
-          if (session?.user) {
-            try {
-              const existingProfile = await profilesApi.get(session.user.id)
-              if (!existingProfile) {
-                await profilesApi.create({
-                  id: session.user.id,
-                  full_name: session.user.user_metadata?.full_name || null,
-                  avatar_url: session.user.user_metadata?.avatar_url || null
-                })
-              }
-            } catch (error) {
-              console.error('Error handling user profile:', error)
-            }
-          }
+          setLoading(false)
+          setInitialized(true)
         }
       } catch (error) {
         console.error('Error in getInitialSession:', error)
-      } finally {
         if (mounted) {
           setLoading(false)
           setInitialized(true)
@@ -81,31 +52,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (!mounted) return
-
-        setSession(session)
-        setUser(session?.user ?? null)
-        setLoading(false)
-
-        // Handle sign in
-        if (event === 'SIGNED_IN' && session?.user) {
-          try {
-            const existingProfile = await profilesApi.get(session.user.id)
-            if (!existingProfile) {
-              await profilesApi.create({
-                id: session.user.id,
-                full_name: session.user.user_metadata?.full_name || null,
-                avatar_url: session.user.user_metadata?.avatar_url || null
-              })
-            }
-          } catch (error) {
-            console.error('Error creating user profile:', error)
+        console.log('Auth state changed:', event, session?.user?.id)
+        
+        if (mounted) {
+          setSession(session)
+          setUser(session?.user ?? null)
+          setLoading(false)
+          
+          // Handle specific auth events
+          if (event === 'SIGNED_IN') {
+            console.log('User signed in:', session?.user?.email)
+          } else if (event === 'SIGNED_OUT') {
+            console.log('User signed out')
+            // Clear any cached data
+            localStorage.removeItem('followuply-cached-profile')
+          } else if (event === 'TOKEN_REFRESHED') {
+            console.log('Token refreshed')
           }
-        }
-
-        // Handle sign out
-        if (event === 'SIGNED_OUT') {
-          localStorage.removeItem('followuply-language-selected')
         }
       }
     )
@@ -118,47 +81,75 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const signOut = async () => {
     try {
+      setLoading(true)
       const { error } = await supabase.auth.signOut()
-      if (error) throw error
+      
+      if (error) {
+        console.error('Error signing out:', error)
+        throw error
+      }
       
       // Clear local storage
+      localStorage.removeItem('followuply-cached-profile')
       localStorage.removeItem('followuply-language-selected')
       
       // Reset state
       setUser(null)
       setSession(null)
     } catch (error) {
-      console.error('Error signing out:', error)
+      console.error('Sign out error:', error)
       throw error
+    } finally {
+      setLoading(false)
     }
   }
 
   const refreshSession = async () => {
     try {
       const { data: { session }, error } = await supabase.auth.refreshSession()
-      if (error) throw error
+      
+      if (error) {
+        console.error('Error refreshing session:', error)
+        throw error
+      }
       
       setSession(session)
       setUser(session?.user ?? null)
     } catch (error) {
-      console.error('Error refreshing session:', error)
+      console.error('Refresh session error:', error)
       throw error
     }
   }
 
-  const auth: AuthContextType = {
+  const isAuthenticated = !!user && !!session
+
+  return {
     user,
     session,
     loading,
-    isAuthenticated: !!user,
+    isAuthenticated,
     initialized,
     signOut,
     refreshSession
   }
+}
 
+// Auth Provider Component (if needed for context)
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const auth = useAuth()
+  
   return (
     <AuthContext.Provider value={auth}>
       {children}
     </AuthContext.Provider>
   )
+}
+
+// Hook to use auth context (alternative implementation)
+export function useAuthContext(): AuthContextType {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuthContext must be used within an AuthProvider')
+  }
+  return context
 }

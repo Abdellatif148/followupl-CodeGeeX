@@ -82,7 +82,7 @@ export const clientsApi = {
     if (error) throw error
   },
 
-  async search(userId: string, query: string) {
+  async search(userId: string, query: string): Promise<Client[]> {
     const { data, error } = await supabase
       .from('clients')
       .select('*')
@@ -91,7 +91,7 @@ export const clientsApi = {
       .order('created_at', { ascending: false })
     
     if (error) throw error
-    return data as Client[]
+    return data || []
   }
 }
 

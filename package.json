@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.3",
+    "date-fns": "^3.6.0",
     "i18next": "^25.3.1",
     "i18next-browser-languagedetector": "^8.2.0",
     "lucide-react": "^0.344.0",

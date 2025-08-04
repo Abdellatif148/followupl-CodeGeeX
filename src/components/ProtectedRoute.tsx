@@ -1,6 +1,11 @@
 import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+<<<<<<< HEAD
 import { useAuth } from '../hooks/useAuth'
+=======
+import { supabase } from '../lib/supabase'
+import { User } from '@supabase/supabase-js'
+>>>>>>> 18e20bc (Auto commit 2025-08-04 21:20:01)
 import { useAuthAnalytics } from '../hooks/useAnalytics'
 
 interface ProtectedRouteProps {

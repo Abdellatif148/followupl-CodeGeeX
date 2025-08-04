@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Bell, X, Check, AlertCircle, Clock, CheckCircle } from 'lucide-react'
 import { notificationsApi } from '../lib/database'
-import { useAuth } from '../hooks/useAuth'
-import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
-import { formatRelativeDate } from '../utils/dateHelpers'
+import { supabase } from '../lib/supabase'
 
 interface Notification {
   id: string
@@ -31,7 +29,6 @@ export default function NotificationCenter({
 }: NotificationCenterProps) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
-  const { user } = useAuth()
 
   useEffect(() => {
     if (isOpen) {
@@ -41,18 +38,17 @@ export default function NotificationCenter({
 
   const loadNotifications = async () => {
     try {
-      if (!user) return
-      
-      const notificationsData = await notificationsApi.getAll(user.id)
-      setNotifications(notificationsData)
-      
-      // Update unread count
-      const unreadCount = notificationsData.filter(n => !n.is_read).length
-      onUnreadCountChange(unreadCount)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const notificationsData = await notificationsApi.getAll(user.id)
+        setNotifications(notificationsData)
+        
+        // Update unread count
+        const unreadCount = notificationsData.filter(n => !n.is_read).length
+        onUnreadCountChange(unreadCount)
+      }
     } catch (error) {
       console.error('Error loading notifications:', error)
-      const appError = handleSupabaseError(error)
-      showErrorToast(appError.message)
     } finally {
       setLoading(false)
     }
@@ -67,22 +63,19 @@ export default function NotificationCenter({
       onUnreadCountChange(Math.max(0, unreadCount - 1))
     } catch (error) {
       console.error('Error marking notification as read:', error)
-     const appError = handleSupabaseError(error)
-     showErrorToast(appError.message)
     }
   }
 
   const markAllAsRead = async () => {
     try {
-      if (!user) return
-      
-      await notificationsApi.markAllAsRead(user.id)
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
-      onUnreadCountChange(0)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await notificationsApi.markAllAsRead(user.id)
+        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+        onUnreadCountChange(0)
+      }
     } catch (error) {
       console.error('Error marking all notifications as read:', error)
-     const appError = handleSupabaseError(error)
-     showErrorToast(appError.message)
     }
   }
 
@@ -94,6 +87,22 @@ export default function NotificationCenter({
       case 'reminder': return <Clock className="w-5 h-5 text-blue-500" />
       default: return <Bell className="w-5 h-5 text-gray-500" />
     }
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffTime = now.getTime() - date.getTime()
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+    
+    if (diffDays === 0) return 'Today'
+    if (diffDays === 1) return 'Yesterday'
+    if (diffDays < 7) return `${diffDays} days ago`
+    
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    })
   }
 
   if (!isOpen) return null
@@ -183,7 +192,7 @@ export default function NotificationCenter({
                             {notification.message}
                           </p>
                           <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">
-                            {formatRelativeDate(notification.created_at)}
+                            {formatDate(notification.created_at)}
                           </p>
                         </div>
                         {!notification.is_read && (

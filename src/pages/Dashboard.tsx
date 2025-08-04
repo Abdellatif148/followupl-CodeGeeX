@@ -3,14 +3,12 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { 
   Users, Bell, FileText, DollarSign, TrendingUp, Clock,
-  Plus, ArrowRight, AlertTriangle, CheckCircle
+  Plus, ArrowRight, AlertTriangle, CheckCircle, TrendingDown
 } from 'lucide-react'
 import Layout from '../components/Layout'
 import { dashboardApi } from '../lib/database'
-import { useAuth } from '../hooks/useAuth'
+import { supabase } from '../lib/supabase'
 import { useCurrency } from '../hooks/useCurrency'
-import { handleSupabaseError, showErrorToast } from '../utils/errorHandler'
-import { formatDate } from '../utils/dateHelpers'
 
 interface DashboardStats {
   activeClients: number
@@ -22,41 +20,37 @@ interface DashboardStats {
   recentClients: any[]
   upcomingReminders: any[]
   recentInvoices: any[]
-  totalMonthlyExpenses: number
-  topExpenseCategory: any
+  totalExpenses: number
+  totalRevenue: number
   recentExpenses: any[]
 }
 
 export default function Dashboard() {
   const { t } = useTranslation()
-  const { user } = useAuth()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<any>(null)
   const { formatCurrency } = useCurrency()
 
   useEffect(() => {
     const loadDashboard = async () => {
-      if (!user) {
-        setLoading(false)
-        return
-      }
-      
       try {
-        const dashboardStats = await dashboardApi.getStats(user.id)
-        setStats(dashboardStats)
+        const { data: { user } } = await supabase.auth.getUser()
+        setUser(user)
+        
+        if (user) {
+          const dashboardStats = await dashboardApi.getStats(user.id)
+          setStats(dashboardStats)
+        }
       } catch (error) {
         console.error('Error loading dashboard:', error)
-        const appError = handleSupabaseError(error)
-        showErrorToast(appError.message)
       } finally {
         setLoading(false)
       }
     }
 
     loadDashboard()
-  }, [user])
-
-  const userName = user?.user_metadata?.full_name?.split(' ')[0] || 'there'
+  }, [])
 
   if (loading) {
     return (
@@ -74,6 +68,16 @@ export default function Dashboard() {
       </Layout>
     )
   }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  }
+
+  const userName = user?.user_metadata?.full_name?.split(' ')[0] || 'there'
 
   return (
     <Layout>
@@ -100,7 +104,7 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
           <div className="bg-gradient-to-br from-white to-blue-50 dark:from-gray-800 dark:to-blue-900/20 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
@@ -168,6 +172,40 @@ export default function Dashboard() {
               </Link>
             </div>
           </div>
+
+          <div className="bg-gradient-to-br from-white to-red-50 dark:from-gray-800 dark:to-red-900/20 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Expenses</p>
+                <p className="text-3xl font-bold text-red-600 dark:text-red-400">{formatCurrency(stats?.totalExpenses || 0)}</p>
+              </div>
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-xl flex items-center justify-center">
+                <TrendingDown className="w-6 h-6 text-red-600 dark:text-red-400" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <Link to="/expenses" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center">
+                View expenses <ArrowRight className="w-4 h-4 ml-1" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-white to-purple-50 dark:from-gray-800 dark:to-purple-900/20 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-lg transition-all duration-300">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Progress Charts</p>
+                <p className="text-3xl font-bold text-purple-600 dark:text-purple-400">Pro</p>
+              </div>
+              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-xl flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <Link to="/progress-charts" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center">
+                View charts <ArrowRight className="w-4 h-4 ml-1" />
+              </Link>
+            </div>
+          </div>
         </div>
 
         {/* Content Grid */}
@@ -193,7 +231,7 @@ export default function Dashboard() {
                       <div>
                         <p className="font-medium text-gray-900 dark:text-white">{reminder.title}</p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {reminder.clients?.name} • {formatDate(reminder.due_date || reminder.datetime)}
+                          {reminder.clients?.name} • {formatDate(reminder.due_date)}
                         </p>
                       </div>
                     </div>
@@ -235,7 +273,7 @@ export default function Dashboard() {
                         'bg-yellow-500'
                       }`} />
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{invoice.title || invoice.project}</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{invoice.title}</p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           {invoice.clients?.name} • Due {formatDate(invoice.due_date)}
                         </p>
@@ -269,47 +307,6 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-
-        {/* Monthly Expenses Summary */}
-        {stats?.totalMonthlyExpenses && stats.totalMonthlyExpenses > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Monthly Expenses</h2>
-              <Link to="/expenses" className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium">
-                View all
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-purple-600 dark:text-purple-400">This Month</p>
-                    <p className="text-2xl font-bold text-purple-900 dark:text-purple-300">
-                      {formatCurrency(stats.totalMonthlyExpenses)}
-                    </p>
-                  </div>
-                  <DollarSign className="w-8 h-8 text-purple-600 dark:text-purple-400" />
-                </div>
-              </div>
-              {stats.topExpenseCategory && (
-                <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Top Category</p>
-                      <p className="text-lg font-bold text-indigo-900 dark:text-indigo-300">
-                        {stats.topExpenseCategory.category}
-                      </p>
-                      <p className="text-sm text-indigo-600 dark:text-indigo-400">
-                        {formatCurrency(stats.topExpenseCategory.amount)}
-                      </p>
-                    </div>
-                    <TrendingUp className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     </Layout>
   )

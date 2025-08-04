@@ -1,26 +1,6 @@
 export interface Database {
   public: {
     Tables: {
-      users: {
-        Row: {
-          id: string
-          email: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id: string
-          email: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          email?: string
-          created_at?: string
-          updated_at?: string
-        }
-      }
       profiles: {
         Row: {
           id: string
@@ -63,7 +43,6 @@ export interface Database {
           name: string
           email: string | null
           phone: string | null
-          company: string | null
           platform: 'fiverr' | 'upwork' | 'direct' | 'other'
           platform_profile: string | null
           contact_method: 'email' | 'whatsapp' | 'telegram' | 'discord' | 'other'
@@ -82,7 +61,6 @@ export interface Database {
           name: string
           email?: string | null
           phone?: string | null
-          company?: string | null
           platform?: 'fiverr' | 'upwork' | 'direct' | 'other'
           platform_profile?: string | null
           contact_method?: 'email' | 'whatsapp' | 'telegram' | 'discord' | 'other'
@@ -101,7 +79,6 @@ export interface Database {
           name?: string
           email?: string | null
           phone?: string | null
-          company?: string | null
           platform?: 'fiverr' | 'upwork' | 'direct' | 'other'
           platform_profile?: string | null
           contact_method?: 'email' | 'whatsapp' | 'telegram' | 'discord' | 'other'
@@ -122,12 +99,10 @@ export interface Database {
           client_id: string | null
           title: string
           message: string | null
-          description: string | null
           due_date: string
-          datetime: string | null
           reminder_type: 'follow_up' | 'payment' | 'project_deadline' | 'custom'
           priority: 'low' | 'medium' | 'high' | 'urgent'
-          status: 'pending' | 'completed' | 'snoozed' | 'cancelled' | 'active' | 'done'
+          status: 'pending' | 'completed' | 'snoozed' | 'cancelled'
           is_recurring: boolean
           recurring_interval: 'daily' | 'weekly' | 'monthly' | 'yearly' | null
           ai_suggested: boolean
@@ -142,12 +117,10 @@ export interface Database {
           client_id?: string | null
           title: string
           message?: string | null
-          description?: string | null
           due_date: string
-          datetime?: string | null
           reminder_type?: 'follow_up' | 'payment' | 'project_deadline' | 'custom'
           priority?: 'low' | 'medium' | 'high' | 'urgent'
-          status?: 'pending' | 'completed' | 'snoozed' | 'cancelled' | 'active' | 'done'
+          status?: 'pending' | 'completed' | 'snoozed' | 'cancelled'
           is_recurring?: boolean
           recurring_interval?: 'daily' | 'weekly' | 'monthly' | 'yearly' | null
           ai_suggested?: boolean
@@ -162,12 +135,10 @@ export interface Database {
           client_id?: string | null
           title?: string
           message?: string | null
-          description?: string | null
           due_date?: string
-          datetime?: string | null
           reminder_type?: 'follow_up' | 'payment' | 'project_deadline' | 'custom'
           priority?: 'low' | 'medium' | 'high' | 'urgent'
-          status?: 'pending' | 'completed' | 'snoozed' | 'cancelled' | 'active' | 'done'
+          status?: 'pending' | 'completed' | 'snoozed' | 'cancelled'
           is_recurring?: boolean
           recurring_interval?: 'daily' | 'weekly' | 'monthly' | 'yearly' | null
           ai_suggested?: boolean
@@ -185,11 +156,10 @@ export interface Database {
           invoice_number: string | null
           title: string
           description: string | null
-          project: string | null
           amount: number
           currency: string
           due_date: string
-          status: 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled' | 'unpaid'
+          status: 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled'
           payment_method: string | null
           payment_date: string | null
           late_fee: number
@@ -206,11 +176,10 @@ export interface Database {
           invoice_number?: string | null
           title: string
           description?: string | null
-          project?: string | null
           amount: number
           currency?: string
           due_date: string
-          status?: 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled' | 'unpaid'
+          status?: 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled'
           payment_method?: string | null
           payment_date?: string | null
           late_fee?: number
@@ -227,11 +196,10 @@ export interface Database {
           invoice_number?: string | null
           title?: string
           description?: string | null
-          project?: string | null
           amount?: number
           currency?: string
           due_date?: string
-          status?: 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled' | 'unpaid'
+          status?: 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled'
           payment_method?: string | null
           payment_date?: string | null
           late_fee?: number
@@ -252,7 +220,7 @@ export interface Database {
           is_read: boolean
           action_url: string | null
           related_id: string | null
-          related_type: 'client' | 'reminder' | 'invoice' | 'expense' | null
+          related_type: 'client' | 'reminder' | 'invoice' | null
           created_at: string
         }
         Insert: {
@@ -264,7 +232,7 @@ export interface Database {
           is_read?: boolean
           action_url?: string | null
           related_id?: string | null
-          related_type?: 'client' | 'reminder' | 'invoice' | 'expense' | null
+          related_type?: 'client' | 'reminder' | 'invoice' | null
           created_at?: string
         }
         Update: {
@@ -276,78 +244,69 @@ export interface Database {
           is_read?: boolean
           action_url?: string | null
           related_id?: string | null
-          related_type?: 'client' | 'reminder' | 'invoice' | 'expense' | null
+          related_type?: 'client' | 'reminder' | 'invoice' | null
           created_at?: string
-        }
-      }
-      expenses: {
-        Row: {
-          id: string
-          user_id: string
-          client_id: string | null
-          title: string
-          description: string | null
-          amount: number
-          currency: string
-          category: string
-          subcategory: string | null
-          expense_date: string
-          payment_method: string | null
-          tax_deductible: boolean
-          status: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
-          tags: string[]
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          client_id?: string | null
-          title: string
-          description?: string | null
-          amount: number
-          currency: string
-          category: string
-          subcategory?: string | null
-          expense_date: string
-          payment_method?: string | null
-          tax_deductible?: boolean
-          status?: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
-          tags?: string[]
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          client_id?: string | null
-          title?: string
-          description?: string | null
-          amount?: number
-          currency?: string
-          category?: string
-          subcategory?: string | null
-          expense_date?: string
-          payment_method?: string | null
-          tax_deductible?: boolean
-          status?: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
-          tags?: string[]
-          created_at?: string
-          updated_at?: string
         }
       }
     }
   }
+  expenses: {
+    Row: {
+      id: string
+      user_id: string
+      client_id: string | null
+      title: string
+      description: string | null
+      amount: number
+      currency: string
+      category: string
+      subcategory: string | null
+      expense_date: string
+      payment_method: string | null
+      tax_deductible: boolean
+      status: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
+      tags: string[] | null
+      created_at: string
+      updated_at: string
+    }
+    Insert: {
+      id?: string
+      user_id: string
+      client_id?: string | null
+      title: string
+      description?: string | null
+      amount: number
+      currency: string
+      category: string
+      subcategory?: string | null
+      expense_date: string
+      payment_method?: string | null
+      tax_deductible?: boolean
+      status?: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
+      tags?: string[] | null
+      created_at?: string
+      updated_at?: string
+    }
+    Update: {
+      id?: string
+      user_id?: string
+      client_id?: string | null
+      title?: string
+      description?: string | null
+      amount?: number
+      currency?: string
+      category?: string
+      subcategory?: string | null
+      expense_date?: string
+      payment_method?: string | null
+      tax_deductible?: boolean
+      status?: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
+      tags?: string[] | null
+      created_at?: string
+      updated_at?: string
+    }
+  }
 }
-
-// Type exports for easier use
-export type User = Database['public']['Tables']['users']['Row']
-export type UserInsert = Database['public']['Tables']['users']['Insert']
-export type UserUpdate = Database['public']['Tables']['users']['Update']
-
-export type Profile = Database['public']['Tables']['profiles']['Row']
-export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
-export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
 
 export type Client = Database['public']['Tables']['clients']['Row']
 export type ClientInsert = Database['public']['Tables']['clients']['Insert']
@@ -361,35 +320,14 @@ export type Invoice = Database['public']['Tables']['invoices']['Row']
 export type InvoiceInsert = Database['public']['Tables']['invoices']['Insert']
 export type InvoiceUpdate = Database['public']['Tables']['invoices']['Update']
 
+export type Profile = Database['public']['Tables']['profiles']['Row']
+export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
+export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
+
 export type Notification = Database['public']['Tables']['notifications']['Row']
 export type NotificationInsert = Database['public']['Tables']['notifications']['Insert']
 export type NotificationUpdate = Database['public']['Tables']['notifications']['Update']
 
-export type Expense = Database['public']['Tables']['expenses']['Row'] & {
-  clients?: {
-    id: string;
-    name: string;
-    platform: string;
-  }
-}
+export type Expense = Database['public']['Tables']['expenses']['Row']
 export type ExpenseInsert = Database['public']['Tables']['expenses']['Insert']
 export type ExpenseUpdate = Database['public']['Tables']['expenses']['Update']
-
-// Extended types with relations
-export type ClientWithStats = Client & {
-  reminder_count?: number
-  invoice_count?: number
-  overdue_amount?: number
-}
-
-export type ReminderWithClient = Reminder & {
-  clients?: Pick<Client, 'id' | 'name' | 'platform'>
-}
-
-export type InvoiceWithClient = Invoice & {
-  clients?: Pick<Client, 'id' | 'name' | 'email' | 'platform'>
-}
-
-export type ExpenseWithClient = Expense & {
-  clients?: Pick<Client, 'id' | 'name' | 'platform'>
-}

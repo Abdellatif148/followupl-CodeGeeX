@@ -1,140 +1,131 @@
 import { supabase } from './supabase'
-import type {
+import type { 
   Client, ClientInsert, ClientUpdate,
   Reminder, ReminderInsert, ReminderUpdate,
   Invoice, InvoiceInsert, InvoiceUpdate,
   Profile, ProfileInsert, ProfileUpdate,
   Notification, NotificationInsert, NotificationUpdate,
-  Expense, ExpenseInsert, ExpenseUpdate,
-  ReminderWithClient, InvoiceWithClient, ExpenseWithClient
+  Expense, ExpenseInsert, ExpenseUpdate
 } from '../types/database'
+
+// Define types for joined data
+interface ReminderWithClient extends Reminder {
+  clients?: {
+    id: string
+    name: string
+    platform: string
+  } | null
+}
+
+interface InvoiceWithClient extends Invoice {
+  clients?: {
+    id: string
+    name: string
+    email: string | null
+    platform: string
+  } | null
+}
 
 // Client operations
 export const clientsApi = {
-  async getAll(userId: string): Promise<Client[]> {
-    try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-      
-      if (error) {
-        console.error('Error fetching clients:', error)
-        throw error
-      }
-      return data || []
-    } catch (error) {
-      console.error('Error in clientsApi.getAll:', error)
-      throw error
-    }
+  async getAll(userId: string) {
+    const { data, error } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return data as Client[]
   },
 
-  async getById(id: string): Promise<Client> {
-    try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', id)
-        .single()
-      
-      if (error) {
-        console.error('Error fetching client:', error)
-        throw error
-      }
-      return data
-    } catch (error) {
-      console.error('Error in clientsApi.getById:', error)
-      throw error
-    }
+  async getById(id: string) {
+    const { data, error } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('id', id)
+      .single()
+    
+    if (error) throw error
+    return data as Client
   },
 
-  async create(client: ClientInsert): Promise<Client> {
-    try {
-      const { data, error } = await supabase
-        .from('clients')
-        .insert({
-          ...client,
-          last_contact: new Date().toISOString()
-        })
-        .select()
-        .single()
-      
-      if (error) {
-        console.error('Error creating client:', error)
-        throw error
-      }
-      return data
-    } catch (error) {
-      console.error('Error in clientsApi.create:', error)
-      throw error
-    }
+  async create(client: ClientInsert) {
+    const { data, error } = await supabase
+      .from('clients')
+      .insert(client)
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data as Client
   },
 
-  async update(id: string, updates: ClientUpdate): Promise<Client> {
-    try {
-      const { data, error } = await supabase
-        .from('clients')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single()
-      
-      if (error) {
-        console.error('Error updating client:', error)
-        throw error
-      }
-      return data
-    } catch (error) {
-      console.error('Error in clientsApi.update:', error)
-      throw error
-    }
+  async update(id: string, updates: ClientUpdate) {
+    const { data, error } = await supabase
+      .from('clients')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data as Client
   },
 
-  async delete(id: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', id)
-      
-      if (error) {
-        console.error('Error deleting client:', error)
-        throw error
-      }
-    } catch (error) {
-      console.error('Error in clientsApi.delete:', error)
-      throw error
-    }
+  async delete(id: string) {
+    const { error } = await supabase
+      .from('clients')
+      .delete()
+      .eq('id', id)
+    
+    if (error) throw error
   },
 
-  async search(userId: string, query: string): Promise<Client[]> {
-    try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('user_id', userId)
-        .or(`name.ilike.%${query}%,email.ilike.%${query}%,notes.ilike.%${query}%,company.ilike.%${query}%`)
-        .order('created_at', { ascending: false })
-      
-      if (error) {
-        console.error('Error searching clients:', error)
-        throw error
-      }
-      return data || []
-    } catch (error) {
-      console.error('Error in clientsApi.search:', error)
-      throw error
-    }
+  async search(userId: string, query: string) {
+    const { data, error } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('user_id', userId)
+      .or(`name.ilike.%${query}%,email.ilike.%${query}%,company.ilike.%${query}%,notes.ilike.%${query}%`)
+      .order('created_at', { ascending: false })
+    
+    if (error) throw error
+    return data as Client[]
   }
 }
 
 // Reminder operations
 export const remindersApi = {
-  async getAll(userId: string): Promise<ReminderWithClient[]> {
+  async requestBrowserNotificationPermission() {
+    if (!('Notification' in window)) {
+      console.log('This browser does not support desktop notification')
+      return
+    }
+
+    if (Notification.permission === 'granted') return
+
+    try {
+      await Notification.requestPermission()
+    } catch (error) {
+      console.error('Error requesting notification permission:', error)
+    }
+  },
+
+  async showBrowserNotification(reminder: Reminder) {
+    if (Notification.permission !== 'granted') return
+
+    new Notification('Followuply', {
+      body: `⏰ ${reminder.title} is due soon!`,
+      icon: '/logo192.png',
+      data: {
+        reminderId: reminder.id,
+        type: 'reminder'
+      }
+    })
+  },
+
+  async getAll(userId: string) {
     try {
       const { data, error } = await supabase
         .from('reminders')
@@ -160,7 +151,7 @@ export const remindersApi = {
     }
   },
 
-  async getUpcoming(userId: string, days: number = 7): Promise<ReminderWithClient[]> {
+  async getUpcoming(userId: string, days: number = 7) {
     try {
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + days)
@@ -277,7 +268,7 @@ export const remindersApi = {
 
 // Invoice operations
 export const invoicesApi = {
-  async getAll(userId: string): Promise<InvoiceWithClient[]> {
+  async getAll(userId: string) {
     try {
       const { data, error } = await supabase
         .from('invoices')
@@ -293,10 +284,7 @@ export const invoicesApi = {
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
       
-      if (error) {
-        console.error('Error fetching invoices:', error)
-        throw error
-      }
+      if (error) throw error
       return data || []
     } catch (error) {
       console.error('Error in invoicesApi.getAll:', error)
@@ -304,7 +292,7 @@ export const invoicesApi = {
     }
   },
 
-  async getOverdue(userId: string): Promise<InvoiceWithClient[]> {
+  async getOverdue(userId: string) {
     try {
       const today = new Date().toISOString().split('T')[0]
       
@@ -320,14 +308,11 @@ export const invoicesApi = {
           )
         `)
         .eq('user_id', userId)
-        .in('status', ['sent', 'pending', 'unpaid'])
+        .in('status', ['unpaid', 'pending'])
         .lt('due_date', today)
         .order('due_date', { ascending: true })
       
-      if (error) {
-        console.error('Error fetching overdue invoices:', error)
-        throw error
-      }
+      if (error) throw error
       return data || []
     } catch (error) {
       console.error('Error in invoicesApi.getOverdue:', error)
@@ -335,7 +320,7 @@ export const invoicesApi = {
     }
   },
 
-  async create(invoice: InvoiceInsert): Promise<Invoice> {
+  async create(invoice: InvoiceInsert) {
     try {
       const { data, error } = await supabase
         .from('invoices')
@@ -343,18 +328,15 @@ export const invoicesApi = {
         .select()
         .single()
       
-      if (error) {
-        console.error('Error creating invoice:', error)
-        throw error
-      }
-      return data
+      if (error) throw error
+      return data as Invoice
     } catch (error) {
       console.error('Error in invoicesApi.create:', error)
       throw error
     }
   },
 
-  async update(id: string, updates: InvoiceUpdate): Promise<Invoice> {
+  async update(id: string, updates: InvoiceUpdate) {
     try {
       const { data, error } = await supabase
         .from('invoices')
@@ -366,35 +348,29 @@ export const invoicesApi = {
         .select()
         .single()
       
-      if (error) {
-        console.error('Error updating invoice:', error)
-        throw error
-      }
-      return data
+      if (error) throw error
+      return data as Invoice
     } catch (error) {
       console.error('Error in invoicesApi.update:', error)
       throw error
     }
   },
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string) {
     try {
       const { error } = await supabase
         .from('invoices')
         .delete()
         .eq('id', id)
       
-      if (error) {
-        console.error('Error deleting invoice:', error)
-        throw error
-      }
+      if (error) throw error
     } catch (error) {
       console.error('Error in invoicesApi.delete:', error)
       throw error
     }
   },
 
-  async markPaid(id: string, paymentMethod?: string): Promise<Invoice> {
+  async markPaid(id: string, paymentMethod?: string) {
     try {
       const { data, error } = await supabase
         .from('invoices')
@@ -408,11 +384,8 @@ export const invoicesApi = {
         .select()
         .single()
       
-      if (error) {
-        console.error('Error marking invoice as paid:', error)
-        throw error
-      }
-      return data
+      if (error) throw error
+      return data as Invoice
     } catch (error) {
       console.error('Error in invoicesApi.markPaid:', error)
       throw error
@@ -420,9 +393,101 @@ export const invoicesApi = {
   }
 }
 
+// Expense operations
+export const expensesApi = {
+  async getAll(userId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select(`
+          *,
+          clients (
+            id,
+            name
+          )
+        `)
+        .eq('user_id', userId)
+        .order('expense_date', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error in expensesApi.getAll:', error)
+      throw error
+    }
+  },
+
+  async create(expense: ExpenseInsert) {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert(expense)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data as Expense
+    } catch (error) {
+      console.error('Error in expensesApi.create:', error)
+      throw error
+    }
+  },
+
+  async update(id: string, updates: ExpenseUpdate) {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data as Expense
+    } catch (error) {
+      console.error('Error in expensesApi.update:', error)
+      throw error
+    }
+  },
+
+  async delete(id: string) {
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error in expensesApi.delete:', error)
+      throw error
+    }
+  },
+
+  async getByCategory(userId: string, category: string) {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('category', category)
+        .order('expense_date', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error in expensesApi.getByCategory:', error)
+      throw error
+    }
+  }
+}
+
 // Profile operations
 export const profilesApi = {
-  async get(userId: string): Promise<Profile | null> {
+  async get(userId: string) {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -430,18 +495,15 @@ export const profilesApi = {
         .eq('id', userId)
         .maybeSingle()
       
-      if (error) {
-        console.error('Error fetching profile:', error)
-        throw error
-      }
-      return data
+      if (error) throw error
+      return data as Profile | null
     } catch (error) {
       console.error('Error in profilesApi.get:', error)
       throw error
     }
   },
 
-  async create(profile: ProfileInsert): Promise<Profile> {
+  async create(profile: ProfileInsert) {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -449,18 +511,15 @@ export const profilesApi = {
         .select()
         .single()
       
-      if (error) {
-        console.error('Error creating profile:', error)
-        throw error
-      }
-      return data
+      if (error) throw error
+      return data as Profile
     } catch (error) {
       console.error('Error in profilesApi.create:', error)
       throw error
     }
   },
 
-  async update(userId: string, updates: ProfileUpdate): Promise<Profile> {
+  async update(userId: string, updates: ProfileUpdate) {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -472,11 +531,8 @@ export const profilesApi = {
         .select()
         .single()
       
-      if (error) {
-        console.error('Error updating profile:', error)
-        throw error
-      }
-      return data
+      if (error) throw error
+      return data as Profile
     } catch (error) {
       console.error('Error in profilesApi.update:', error)
       throw error
@@ -486,7 +542,7 @@ export const profilesApi = {
 
 // Notification operations
 export const notificationsApi = {
-  async getAll(userId: string): Promise<Notification[]> {
+  async getAll(userId: string) {
     try {
       const { data, error } = await supabase
         .from('notifications')
@@ -494,18 +550,15 @@ export const notificationsApi = {
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
       
-      if (error) {
-        console.error('Error fetching notifications:', error)
-        throw error
-      }
-      return data || []
+      if (error) throw error
+      return data as Notification[]
     } catch (error) {
       console.error('Error in notificationsApi.getAll:', error)
       throw error
     }
   },
 
-  async getUnread(userId: string): Promise<Notification[]> {
+  async getUnread(userId: string) {
     try {
       const { data, error } = await supabase
         .from('notifications')
@@ -514,35 +567,29 @@ export const notificationsApi = {
         .eq('is_read', false)
         .order('created_at', { ascending: false })
       
-      if (error) {
-        console.error('Error fetching unread notifications:', error)
-        throw error
-      }
-      return data || []
+      if (error) throw error
+      return data as Notification[]
     } catch (error) {
       console.error('Error in notificationsApi.getUnread:', error)
       throw error
     }
   },
 
-  async markAsRead(id: string): Promise<void> {
+  async markAsRead(id: string) {
     try {
       const { error } = await supabase
         .from('notifications')
         .update({ is_read: true })
         .eq('id', id)
       
-      if (error) {
-        console.error('Error marking notification as read:', error)
-        throw error
-      }
+      if (error) throw error
     } catch (error) {
       console.error('Error in notificationsApi.markAsRead:', error)
       throw error
     }
   },
 
-  async markAllAsRead(userId: string): Promise<void> {
+  async markAllAsRead(userId: string) {
     try {
       const { error } = await supabase
         .from('notifications')
@@ -550,17 +597,14 @@ export const notificationsApi = {
         .eq('user_id', userId)
         .eq('is_read', false)
       
-      if (error) {
-        console.error('Error marking all notifications as read:', error)
-        throw error
-      }
+      if (error) throw error
     } catch (error) {
       console.error('Error in notificationsApi.markAllAsRead:', error)
       throw error
     }
   },
 
-  async create(notification: NotificationInsert): Promise<Notification> {
+  async create(notification: NotificationInsert) {
     try {
       const { data, error } = await supabase
         .from('notifications')
@@ -568,307 +612,11 @@ export const notificationsApi = {
         .select()
         .single()
       
-      if (error) {
-        console.error('Error creating notification:', error)
-        throw error
-      }
-      return data
+      if (error) throw error
+      return data as Notification
     } catch (error) {
       console.error('Error in notificationsApi.create:', error)
       throw error
-    }
-  }
-}
-
-// Expense operations
-export const expensesApi = {
-  async getAll(userId: string): Promise<ExpenseWithClient[]> {
-    try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .select(`
-          *,
-          clients (
-            id,
-            name,
-            platform
-          )
-        `)
-        .eq('user_id', userId)
-        .order('expense_date', { ascending: false })
-      
-      if (error) {
-        console.error('Error fetching expenses:', error)
-        throw error
-      }
-      return data || []
-    } catch (error) {
-      console.error('Error in expensesApi.getAll:', error)
-      return []
-    }
-  },
-
-  async getById(id: string): Promise<ExpenseWithClient> {
-    try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .select(`
-          *,
-          clients (
-            id,
-            name,
-            platform
-          )
-        `)
-        .eq('id', id)
-        .single()
-      
-      if (error) {
-        console.error('Error fetching expense:', error)
-        throw error
-      }
-      return data
-    } catch (error) {
-      console.error('Error in expensesApi.getById:', error)
-      throw error
-    }
-  },
-
-  async create(expense: ExpenseInsert): Promise<Expense> {
-    try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .insert(expense)
-        .select()
-        .single()
-      
-      if (error) {
-        console.error('Error creating expense:', error)
-        throw error
-      }
-      return data
-    } catch (error) {
-      console.error('Error in expensesApi.create:', error)
-      throw error
-    }
-  },
-
-  async update(id: string, updates: ExpenseUpdate): Promise<Expense> {
-    try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single()
-      
-      if (error) {
-        console.error('Error updating expense:', error)
-        throw error
-      }
-      return data
-    } catch (error) {
-      console.error('Error in expensesApi.update:', error)
-      throw error
-    }
-  },
-
-  async delete(id: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('expenses')
-        .delete()
-        .eq('id', id)
-      
-      if (error) {
-        console.error('Error deleting expense:', error)
-        throw error
-      }
-    } catch (error) {
-      console.error('Error in expensesApi.delete:', error)
-      throw error
-    }
-  },
-
-  async getByCategory(userId: string, startDate: string, endDate: string) {
-    try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .select('category, amount, currency')
-        .eq('user_id', userId)
-        .gte('expense_date', startDate)
-        .lte('expense_date', endDate)
-      
-      if (error) {
-        console.error('Error fetching expenses by category:', error)
-        throw error
-      }
-      
-      // Group by category and sum amounts
-      const categoryTotals = (data || []).reduce((acc, expense) => {
-        const category = expense.category
-        if (!acc[category]) {
-          acc[category] = 0
-        }
-        acc[category] += expense.amount
-        return acc
-      }, {} as Record<string, number>)
-      
-      return Object.entries(categoryTotals).map(([category, total]) => ({
-        category,
-        total
-      }))
-    } catch (error) {
-      console.error('Error in expensesApi.getByCategory:', error)
-      return []
-    }
-  },
-
-  async getByClient(userId: string, startDate: string, endDate: string) {
-    try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .select(`
-          amount, 
-          currency,
-          clients (
-            id,
-            name
-          )
-        `)
-        .eq('user_id', userId)
-        .gte('expense_date', startDate)
-        .lte('expense_date', endDate)
-        .not('client_id', 'is', null)
-      
-      if (error) {
-        console.error('Error fetching expenses by client:', error)
-        throw error
-      }
-      
-      // Group by client and sum amounts
-      const clientTotals = (data || []).reduce((acc, expense) => {
-        if (!expense.clients) return acc
-        
-        const clientId = expense.clients.id
-        const clientName = expense.clients.name
-        
-        if (!acc[clientId]) {
-          acc[clientId] = {
-            client_id: clientId,
-            client_name: clientName,
-            total: 0
-          }
-        }
-        acc[clientId].total += expense.amount
-        return acc
-      }, {} as Record<string, any>)
-      
-      return Object.values(clientTotals)
-    } catch (error) {
-      console.error('Error in expensesApi.getByClient:', error)
-      return []
-    }
-  },
-
-  async getMonthlyTotals(userId: string, year: number) {
-    try {
-      const startDate = `${year}-01-01`
-      const endDate = `${year}-12-31`
-      
-      const { data, error } = await supabase
-        .from('expenses')
-        .select('amount, expense_date')
-        .eq('user_id', userId)
-        .gte('expense_date', startDate)
-        .lte('expense_date', endDate)
-      
-      if (error) {
-        console.error('Error fetching monthly expense totals:', error)
-        throw error
-      }
-      
-      // Initialize array with 12 months
-      const monthlyTotals = Array(12).fill(0).map((_, index) => ({
-        month: index + 1,
-        total: 0
-      }))
-      
-      // Group by month and sum amounts
-      ;(data || []).forEach(expense => {
-        const month = new Date(expense.expense_date).getMonth()
-        monthlyTotals[month].total += expense.amount
-      })
-      
-      return monthlyTotals
-    } catch (error) {
-      console.error('Error in expensesApi.getMonthlyTotals:', error)
-      return Array(12).fill(0).map((_, index) => ({
-        month: index + 1,
-        total: 0
-      }))
-    }
-  },
-
-  async search(userId: string, query: string): Promise<ExpenseWithClient[]> {
-    try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .select(`
-          *,
-          clients (
-            id,
-            name,
-            platform
-          )
-        `)
-        .eq('user_id', userId)
-        .or(`title.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%`)
-        .order('expense_date', { ascending: false })
-      
-      if (error) {
-        console.error('Error searching expenses:', error)
-        throw error
-      }
-      return data || []
-    } catch (error) {
-      console.error('Error in expensesApi.search:', error)
-      return []
-    }
-  },
-
-  async getTaxDeductible(userId: string, year: number): Promise<ExpenseWithClient[]> {
-    try {
-      const startDate = `${year}-01-01`
-      const endDate = `${year}-12-31`
-      
-      const { data, error } = await supabase
-        .from('expenses')
-        .select(`
-          *,
-          clients (
-            id,
-            name,
-            platform
-          )
-        `)
-        .eq('user_id', userId)
-        .eq('tax_deductible', true)
-        .gte('expense_date', startDate)
-        .lte('expense_date', endDate)
-        .order('expense_date', { ascending: false })
-      
-      if (error) {
-        console.error('Error fetching tax deductible expenses:', error)
-        throw error
-      }
-      return data || []
-    } catch (error) {
-      console.error('Error in expensesApi.getTaxDeductible:', error)
-      return []
     }
   }
 }
@@ -884,43 +632,18 @@ export const dashboardApi = {
         expensesApi.getAll(userId)
       ])
 
-      const activeClients = clients.filter((c: Client) => c.status === 'active').length
-      const pendingReminders = reminders.filter((r: any) => ['pending', 'active'].includes(r.status)).length
-      const pendingInvoices = invoices.filter((i: any) => ['sent', 'pending', 'unpaid'].includes(i.status))
-      const overdueInvoices = invoices.filter((i: any) => {
+      const activeClients = clients.filter(c => c.status === 'active').length
+      const pendingReminders = reminders.filter(r => ['pending', 'active'].includes(r.status)).length
+      const pendingInvoices = invoices.filter(i => ['unpaid', 'pending'].includes(i.status))
+      const overdueInvoices = invoices.filter(i => {
         const today = new Date().toISOString().split('T')[0]
-        return ['sent', 'pending', 'unpaid'].includes(i.status) && i.due_date < today
+        return ['unpaid', 'pending'].includes(i.status) && i.due_date < today
       })
 
-      const totalPendingAmount = pendingInvoices.reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0)
-      const totalOverdueAmount = overdueInvoices.reduce((sum: number, inv: any) => sum + (inv.amount || 0), 0)
-      
-      // Calculate expense stats
-      const currentDate = new Date()
-      const currentMonth = currentDate.getMonth()
-      const currentYear = currentDate.getFullYear()
-      
-      const firstDayOfMonth = new Date(currentYear, currentMonth, 1).toISOString()
-      const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0).toISOString()
-      
-      const currentMonthExpenses = expenses.filter((e: any) =>
-        e.expense_date >= firstDayOfMonth && e.expense_date <= lastDayOfMonth
-      )
-      
-      const totalMonthlyExpenses = currentMonthExpenses.reduce((sum: number, exp: any) => sum + (exp.amount || 0), 0)
-      
-      // Get top expense category
-      const categoryTotals: Record<string, number> = {}
-      currentMonthExpenses.forEach((expense: any) => {
-        if (!categoryTotals[expense.category]) {
-          categoryTotals[expense.category] = 0
-        }
-        categoryTotals[expense.category] += expense.amount || 0
-      })
-      
-      const topExpenseCategory = Object.entries(categoryTotals)
-        .sort(([, a], [, b]) => b - a)
-        .map(([category, amount]) => ({ category, amount }))[0] || null
+      const totalPendingAmount = pendingInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0)
+      const totalOverdueAmount = overdueInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0)
+      const totalExpenses = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0)
+      const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((sum, inv) => sum + (inv.amount || 0), 0)
 
       return {
         activeClients,
@@ -929,15 +652,15 @@ export const dashboardApi = {
         overdueInvoicesCount: overdueInvoices.length,
         totalPendingAmount,
         totalOverdueAmount,
+        totalExpenses,
+        totalRevenue,
         recentClients: clients.slice(0, 5),
         upcomingReminders: reminders.slice(0, 5),
         recentInvoices: invoices.slice(0, 5),
-        totalMonthlyExpenses,
-        topExpenseCategory,
         recentExpenses: expenses.slice(0, 5)
       }
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error)
+      console.error('Error in dashboardApi.getStats:', error)
       throw error
     }
   }

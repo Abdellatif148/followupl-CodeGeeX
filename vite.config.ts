@@ -6,9 +6,11 @@ export default defineConfig({
   plugins: [
     react()
   ],
+  optimizeDeps: {
+    exclude: ['lucide-react'],
+  },
   build: {
     sourcemap: true,
-    target: 'es2015',
     rollupOptions: {
       output: {
         manualChunks: {
@@ -16,14 +18,9 @@ export default defineConfig({
           router: ['react-router-dom'],
           ui: ['lucide-react'],
           i18n: ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
-          supabase: ['@supabase/supabase-js'],
-          utils: ['date-fns']
+          supabase: ['@supabase/supabase-js']
         }
       }
     }
-  },
-  server: {
-    port: 3000,
-    host: true
   }
 });

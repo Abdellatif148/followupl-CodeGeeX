@@ -25,6 +25,7 @@
     "clients": "Clientes",
     "reminders": "Recordatorios",
     "invoices": "Facturas",
+    "expenses": "Gastos",
     "settings": "Configuración"
   },
   "dashboard": {

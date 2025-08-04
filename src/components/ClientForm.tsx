@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { User, Mail, Phone, Building, FileText, Tag, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 import { clientsApi } from '../lib/database'
-import { useAuth } from '../hooks/useAuth'
-import { handleSupabaseError, showErrorToast, showSuccessToast } from '../utils/errorHandler'
+import { supabase } from '../lib/supabase'
+import { useBusinessAnalytics } from '../hooks/useAnalytics'
 import type { Client } from '../types/database'
 
 interface ClientFormProps {
@@ -12,7 +12,7 @@ interface ClientFormProps {
 }
 
 export default function ClientForm({ onSuccess, onCancel, editingClient }: ClientFormProps) {
-  const { user } = useAuth()
+  const { trackClientAction } = useBusinessAnalytics()
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -87,6 +87,8 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
     setNotification(null)
 
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
       if (!user) {
         throw new Error('User not authenticated')
       }
@@ -112,12 +114,34 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
       if (editingClient) {
         // Update existing client
         await clientsApi.update(editingClient.id, clientData)
+        
+        // Track client update
+        trackClientAction('update', {
+          client_id: editingClient.id,
+          platform: clientData.platform,
+          has_email: !!clientData.email,
+          has_phone: !!clientData.phone,
+          tags_count: tagsArray.length,
+          status: clientData.status
+        })
+        
+        // Don't show notification here - parent will handle it
       } else {
         // Create new client
         await clientsApi.create(clientData)
 
+        // Track client creation
+        trackClientAction('create', {
+          platform: clientData.platform,
+          has_email: !!clientData.email,
+          has_phone: !!clientData.phone,
+          tags_count: tagsArray.length
+        })
 
-        showSuccessToast('Client added successfully!')
+        setNotification({
+          type: 'success',
+          message: 'Client added successfully!'
+        })
 
         // Clear form for new clients
         setFormData({
@@ -138,8 +162,10 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
 
     } catch (error) {
       console.error('Error saving client:', error)
-      const appError = handleSupabaseError(error)
-      showErrorToast(appError.message)
+      setNotification({
+        type: 'error',
+        message: `Failed to ${editingClient ? 'update' : 'add'} client. Please try again.`
+      })
     } finally {
       setIsSubmitting(false)
     }

@@ -2,19 +2,12 @@
   "common": {
     "loading": "Loading...",
     "save": "Save",
-    "saving": "Saving...",
     "cancel": "Cancel",
     "delete": "Delete",
     "edit": "Edit",
     "add": "Add",
     "search": "Search",
     "filter": "Filter",
-    "export": "Export",
-    "update": "Update",
-    "back": "Back",
-    "backToList": "Back to List",
-    "resetFilters": "Reset Filters",
-    "actions": "Actions",
     "all": "All",
     "active": "Active",
     "inactive": "Inactive",
@@ -25,28 +18,14 @@
     "overdue": "Overdue",
     "today": "Today",
     "tomorrow": "Tomorrow",
-    "yesterday": "Yesterday",
-    "error": "Error",
-    "months": {
-      "january": "January",
-      "february": "February",
-      "march": "March",
-      "april": "April",
-      "may": "May",
-      "june": "June",
-      "july": "July",
-      "august": "August",
-      "september": "September",
-      "october": "October",
-      "november": "November",
-      "december": "December"
-    }
+    "yesterday": "Yesterday"
   },
   "navigation": {
     "dashboard": "Dashboard",
     "clients": "Clients",
     "reminders": "Reminders",
     "invoices": "Invoices",
+    "expenses": "Expenses",
     "settings": "Settings"
   },
   "dashboard": {
@@ -106,116 +85,6 @@
     "dueDate": "Due Date",
     "actions": "Actions"
   },
-  "expenses": {
-    "title": "Expenses",
-    "subtitle": "Track and manage your business expenses",
-    "addExpense": "Add Expense",
-    "editExpense": "Edit Expense",
-    "noExpenses": "No expenses found",
-    "noExpensesFiltered": "No expenses match your filters",
-    "noExpensesYet": "You haven't added any expenses yet",
-    "searchPlaceholder": "Search expenses...",
-    "totalAmount": "Total",
-    "taxDeductible": "Tax Deductible",
-    "noClient": "No client",
-    "confirmDelete": "Are you sure you want to delete this expense?",
-    "noIdProvided": "No expense ID provided",
-    "reports": "Reports",
-    "categories": {
-      "officeSupplies": "Office Supplies",
-      "travel": "Travel",
-      "meals": "Meals & Entertainment",
-      "software": "Software & Subscriptions",
-      "hardware": "Hardware & Equipment",
-      "marketing": "Marketing & Advertising",
-      "professionalServices": "Professional Services",
-      "rent": "Rent & Utilities",
-      "fees": "Fees & Licenses",
-      "other": "Other"
-    },
-    "paymentMethods": {
-      "creditCard": "Credit Card",
-      "debitCard": "Debit Card",
-      "cash": "Cash",
-      "bankTransfer": "Bank Transfer",
-      "paypal": "PayPal",
-      "other": "Other"
-    },
-    "status": {
-      "pending": "Pending",
-      "approved": "Approved",
-      "reimbursed": "Reimbursed",
-      "reconciled": "Reconciled"
-    },
-    "form": {
-      "title": "Title",
-      "description": "Description",
-      "amount": "Amount",
-      "currency": "Currency",
-      "category": "Category",
-      "subcategory": "Subcategory",
-      "date": "Date",
-      "client": "Client",
-      "paymentMethod": "Payment Method",
-      "status": "Status",
-      "tags": "Tags",
-      "tagsHint": "(comma separated)",
-      "tagsPlaceholder": "e.g. project1, tax2025, client-reimbursable",
-      "taxDeductible": "Tax Deductible",
-      "selectCategory": "Select a category",
-      "selectPaymentMethod": "Select payment method",
-      "noClient": "No client"
-    },
-    "table": {
-      "title": "Title",
-      "category": "Category",
-      "amount": "Amount",
-      "date": "Date",
-      "client": "Client"
-    },
-    "filters": {
-      "category": "Category",
-      "allCategories": "All Categories",
-      "dateRange": "Date Range",
-      "from": "From",
-      "to": "To",
-      "amountRange": "Amount Range",
-      "min": "Min",
-      "max": "Max",
-      "taxDeductible": "Tax Deductible Only"
-    },
-    "analytics": {
-      "totalExpenses": "Total Expenses",
-      "taxDeductible": "Tax Deductible",
-      "topCategory": "Top Category",
-      "noData": "No data",
-      "expensesByCategory": "Expenses by Category",
-      "expensesByClient": "Expenses by Client",
-      "expensesByMonth": "Monthly Expenses",
-      "byCategory": "By Category",
-      "byClient": "By Client",
-      "byTime": "By Time",
-      "noClientData": "No client-associated expenses for the selected period"
-    },
-    "reports": {
-      "title": "Expense Reports",
-      "subtitle": "Analyze and export your expense data",
-      "export": "Export Report",
-      "period": "Report Period",
-      "monthly": "Monthly",
-      "quarterly": "Quarterly",
-      "yearly": "Yearly",
-      "year": "Year",
-      "month": "Month",
-      "forPeriod": "For period",
-      "taxSummary": "Tax Deduction Summary",
-      "totalTaxDeductible": "Total Tax Deductible Expenses",
-      "taxDeductibleByCategory": "Tax Deductible Expenses by Category",
-      "category": "Category",
-      "amount": "Amount",
-      "noData": "No data available for the selected period"
-    }
-  },
   "settings": {
     "title": "Settings",
     "subtitle": "Manage your account settings and preferences",
@@ -252,6 +121,5 @@
     "error": "An error occurred",
     "confirmDelete": "Are you sure you want to delete?",
     "noDataFound": "No data found"
-  },
-  "expense": "Expenses"
+  }
 }

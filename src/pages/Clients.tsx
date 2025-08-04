@@ -8,39 +8,49 @@ import { Link } from 'react-router-dom'
 import Layout from '../components/Layout'
 import ClientForm from '../components/ClientForm'
 import { clientsApi } from '../lib/database'
-import { useAuth } from '../hooks/useAuth'
+import { supabase } from '../lib/supabase'
 import { useCurrency } from '../hooks/useCurrency'
-import { formatDate } from '../utils/dateHelpers'
-import { handleSupabaseError, showErrorToast, showSuccessToast } from '../utils/errorHandler'
+import { useBusinessAnalytics } from '../hooks/useAnalytics'
 import type { Client } from '../types/database'
 
 export default function Clients() {
-  const { user } = useAuth()
+  const { trackClientAction } = useBusinessAnalytics()
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'archived'>('all')
   const [showEditForm, setShowEditForm] = useState(false)
   const [editingClient, setEditingClient] = useState<Client | null>(null)
+  const [user, setUser] = useState<any>(null)
   const { formatCurrency } = useCurrency()
+  const [toast, setToast] = useState<{
+    type: 'success' | 'error' | 'info'
+    message: string
+  } | null>(null)
 
   useEffect(() => {
     loadClients()
-  }, [user])
+  }, [])
+
+  // Auto-hide toast after 3 seconds
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [toast])
 
   const loadClients = async () => {
-    if (!user) {
-      setLoading(false)
-      return
-    }
-    
     try {
-      const clientsData = await clientsApi.getAll(user.id)
-      setClients(clientsData)
+      const { data: { user } } = await supabase.auth.getUser()
+      setUser(user)
+      
+      if (user) {
+        const clientsData = await clientsApi.getAll(user.id)
+        setClients(clientsData)
+      }
     } catch (error) {
       console.error('Error loading clients:', error)
-      const appError = handleSupabaseError(error)
-      showErrorToast(appError.message)
     } finally {
       setLoading(false)
     }
@@ -64,19 +74,40 @@ export default function Clients() {
   const handleEditClient = (client: Client) => {
     setEditingClient(client)
     setShowEditForm(true)
+    
+    // Track edit action
+    trackClientAction('edit_initiated', {
+      client_id: client.id,
+      has_company: !!client.company,
+      tags_count: client.tags?.length || 0
+    })
   }
 
   const handleDeleteClient = async (client: Client) => {
     if (window.confirm(`Are you sure you want to delete ${client.name}? This action cannot be undone.`)) {
       try {
         await clientsApi.delete(client.id)
-        showSuccessToast('Client deleted successfully')
+        
+        // Track delete action
+        trackClientAction('delete', {
+          client_id: client.id,
+          had_company: !!client.company,
+          tags_count: client.tags?.length || 0
+        })
+        
+        // Show success toast
+        setToast({
+          type: 'success',
+          message: 'Client deleted ❌'
+        })
         
         loadClients()
       } catch (error) {
         console.error('Error deleting client:', error)
-        const appError = handleSupabaseError(error)
-        showErrorToast(appError.message)
+        setToast({
+          type: 'error',
+          message: 'Failed to delete client. Please try again.'
+        })
       }
     }
   }
@@ -86,20 +117,37 @@ export default function Clients() {
     
     try {
       await clientsApi.update(client.id, { status: newStatus })
-      showSuccessToast(`Client marked as ${newStatus}`)
+      
+      // Track status change
+      trackClientAction('status_change', {
+        client_id: client.id,
+        old_status: client.status,
+        new_status: newStatus
+      })
+      
+      // Show success toast
+      setToast({
+        type: 'success',
+        message: `Client marked as ${newStatus} 🔁`
+      })
       
       loadClients()
     } catch (error) {
       console.error('Error updating client status:', error)
-      const appError = handleSupabaseError(error)
-      showErrorToast(appError.message)
+      setToast({
+        type: 'error',
+        message: 'Failed to update client status'
+      })
     }
   }
 
   const handleFormSuccess = () => {
     setShowEditForm(false)
     setEditingClient(null)
-    showSuccessToast('Client updated successfully')
+    setToast({
+      type: 'success',
+      message: 'Client updated successfully ✅'
+    })
     loadClients()
   }
 
@@ -114,6 +162,15 @@ export default function Clients() {
       case 'direct': return '💼'
       default: return '🌐'
     }
+  }
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'Never'
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
   }
 
   if (loading) {
@@ -171,6 +228,24 @@ export default function Clients() {
             Add Client
           </Link>
         </div>
+
+        {/* Toast Notification */}
+        {toast && (
+          <div className={`fixed top-20 right-4 z-50 p-4 rounded-lg shadow-lg border transition-all duration-300 ${
+            toast.type === 'success' 
+              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300'
+              : toast.type === 'error'
+              ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
+              : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300'
+          }`}>
+            <div className="flex items-center gap-3">
+              {toast.type === 'success' && <CheckCircle className="w-5 h-5" />}
+              {toast.type === 'error' && <XCircle className="w-5 h-5" />}
+              {toast.type === 'info' && <AlertTriangle className="w-5 h-5" />}
+              <span className="font-medium">{toast.message}</span>
+            </div>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4">

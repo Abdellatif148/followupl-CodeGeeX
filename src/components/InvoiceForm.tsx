@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { DollarSign, Calendar, FileText, User, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 import { invoicesApi, clientsApi } from '../lib/database'
-import { useAuth } from '../hooks/useAuth'
+import { supabase } from '../lib/supabase'
 import type { Client } from '../types/database'
-import { handleSupabaseError, showErrorToast, showSuccessToast } from '../utils/errorHandler'
+import { useBusinessAnalytics } from '../hooks/useAnalytics'
 
 interface InvoiceFormProps {
   onSuccess?: () => void
@@ -12,7 +12,7 @@ interface InvoiceFormProps {
 }
 
 export default function InvoiceForm({ onSuccess, onCancel, editingInvoice }: InvoiceFormProps) {
-  const { user } = useAuth()
+  const { trackInvoiceAction } = useBusinessAnalytics()
   const [clients, setClients] = useState<Client[]>([])
   const [formData, setFormData] = useState({
     client_id: '',
@@ -44,11 +44,12 @@ export default function InvoiceForm({ onSuccess, onCancel, editingInvoice }: Inv
   }, [editingInvoice])
 
   const loadClients = async () => {
-    if (!user) return
-    
     try {
-      const clientsData = await clientsApi.getAll(user.id)
-      setClients(clientsData)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const clientsData = await clientsApi.getAll(user.id)
+        setClients(clientsData)
+      }
     } catch (error) {
       console.error('Error loading clients:', error)
     }
@@ -107,6 +108,8 @@ export default function InvoiceForm({ onSuccess, onCancel, editingInvoice }: Inv
     setNotification(null)
 
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
       if (!user) {
         throw new Error('User not authenticated')
       }
@@ -124,10 +127,32 @@ export default function InvoiceForm({ onSuccess, onCancel, editingInvoice }: Inv
 
       if (editingInvoice) {
         await invoicesApi.update(editingInvoice.id, invoiceData)
-        showSuccessToast('Invoice updated successfully!')
+        
+        // Track invoice update
+        trackInvoiceAction('update', {
+          amount: invoiceData.amount,
+          currency: invoiceData.currency,
+          status: invoiceData.status
+        })
+        
+        setNotification({
+          type: 'success',
+          message: 'Invoice updated successfully!'
+        })
       } else {
         await invoicesApi.create(invoiceData)
-        showSuccessToast('Invoice created successfully!')
+        
+        // Track invoice creation
+        trackInvoiceAction('create', {
+          amount: invoiceData.amount,
+          currency: invoiceData.currency,
+          status: invoiceData.status
+        })
+        
+        setNotification({
+          type: 'success',
+          message: 'Invoice created successfully!'
+        })
       }
 
       // Clear form if creating new
@@ -149,8 +174,10 @@ export default function InvoiceForm({ onSuccess, onCancel, editingInvoice }: Inv
 
     } catch (error) {
       console.error('Error saving invoice:', error)
-      const appError = handleSupabaseError(error)
-      showErrorToast(appError.message)
+      setNotification({
+        type: 'error',
+        message: 'Failed to save invoice. Please try again.'
+      })
     } finally {
       setIsSubmitting(false)
     }

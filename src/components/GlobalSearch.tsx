@@ -4,6 +4,7 @@ import { clientsApi, remindersApi, invoicesApi, expensesApi } from '../lib/datab
 import { supabase } from '../lib/supabase'
 import { useCurrency } from '../hooks/useCurrency'
 import { formatDate } from '../utils/dateHelpers'
+import { useNavigate } from 'react-router-dom'
 
 interface GlobalSearchProps {
   isOpen: boolean
@@ -24,6 +25,7 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const { formatCurrency } = useCurrency()
+  const navigate = useNavigate()
 
   const searchData = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim()) {
@@ -77,9 +79,9 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
       // Search invoices
       invoices
         .filter(invoice => 
-          invoice.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          invoice.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
           invoice.project?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          invoice.clients?.name.toLowerCase().includes(searchQuery.toLowerCase())
+          invoice.clients?.name?.toLowerCase().includes(searchQuery.toLowerCase())
         )
         .forEach(invoice => {
           searchResults.push({
@@ -137,8 +139,14 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   }
 
   const handleResultClick = (result: SearchResult) => {
-    window.location.href = result.url
+    navigate(result.url)
     onClose()
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onClose()
+    }
   }
 
   if (!isOpen) return null
@@ -161,6 +169,7 @@ export default function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder="Search clients, invoices, reminders, expenses..."
               className="flex-1 bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none"
               autoFocus

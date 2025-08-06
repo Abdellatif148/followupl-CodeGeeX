@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react'
 import { 
-  Plus, Search, Filter, Clock, CheckCircle, AlertTriangle,
-  Calendar, User, MessageSquare, MoreVertical, Edit, Trash2, Bell
+  Plus, Search, Clock, CheckCircle, AlertTriangle,
+  Calendar, User, Edit, Trash2, Bell
 } from 'lucide-react'
 import Layout from '../components/Layout'
 import ReminderForm from '../components/ReminderForm'
 import Table from '../components/Table'
 import { remindersApi, clientsApi } from '../lib/database'
 import { supabase } from '../lib/supabase'
+import { useBusinessAnalytics } from '../hooks/useAnalytics'
 
 export default function Reminders() {
+  const { trackReminderAction } = useBusinessAnalytics()
   const [reminders, setReminders] = useState<any[]>([])
   const [clients, setClients] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -47,9 +49,11 @@ export default function Reminders() {
     const matchesSearch = reminder.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          reminder.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          reminder.message?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         reminder.clients?.name.toLowerCase().includes(searchQuery.toLowerCase())
+                         reminder.clients?.name?.toLowerCase().includes(searchQuery.toLowerCase())
     
-    const matchesStatus = filterStatus === 'all' || reminder.status === filterStatus
+    const matchesStatus = filterStatus === 'all' || 
+                         (filterStatus === 'active' && ['active', 'pending'].includes(reminder.status)) ||
+                         (filterStatus === 'done' && ['done', 'completed'].includes(reminder.status))
     
     return matchesSearch && matchesStatus
   })
@@ -88,8 +92,16 @@ export default function Reminders() {
 
   const toggleStatus = async (reminderId: string, currentStatus: string) => {
     try {
-      const newStatus = currentStatus === 'active' ? 'done' : 'active'
+      const newStatus = ['active', 'pending'].includes(currentStatus) ? 'done' : 'active'
       await remindersApi.update(reminderId, { status: newStatus })
+      
+      // Track status change
+      trackReminderAction('status_change', {
+        reminder_id: reminderId,
+        old_status: currentStatus,
+        new_status: newStatus
+      })
+      
       loadData()
     } catch (error) {
       console.error('Error updating reminder status:', error)
@@ -100,6 +112,12 @@ export default function Reminders() {
     if (window.confirm('Are you sure you want to delete this reminder?')) {
       try {
         await remindersApi.delete(reminderId)
+        
+        // Track deletion
+        trackReminderAction('delete', {
+          reminder_id: reminderId
+        })
+        
         loadData()
       } catch (error) {
         console.error('Error deleting reminder:', error)
@@ -126,11 +144,11 @@ export default function Reminders() {
         <div className="flex items-center space-x-2">
           {getStatusIcon(value)}
           <span className={`capitalize text-sm ${
-            value === 'done' || value === 'completed' 
+            ['done', 'completed'].includes(value)
               ? 'text-green-600 dark:text-green-400'
               : 'text-yellow-600 dark:text-yellow-400'
           }`}>
-            {value}
+            {['done', 'completed'].includes(value) ? 'Done' : 'Active'}
           </span>
         </div>
       )
@@ -143,7 +161,7 @@ export default function Reminders() {
         <div>
           <div className="font-medium text-gray-900 dark:text-white">{value}</div>
           {(row.description || row.message) && (
-            <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <div className="text-sm text-gray-500 dark:text-gray-400 mt-1 truncate max-w-xs">
               {row.description || row.message}
             </div>
           )}
@@ -179,12 +197,12 @@ export default function Reminders() {
           <button
             onClick={() => toggleStatus(row.id, row.status)}
             className={`px-3 py-1 text-sm rounded-lg transition-colors duration-200 ${
-              row.status === 'active' || row.status === 'pending'
+              ['active', 'pending'].includes(row.status)
                 ? 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/40'
                 : 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300 hover:bg-yellow-200 dark:hover:bg-yellow-900/40'
             }`}
           >
-            {row.status === 'active' || row.status === 'pending' ? 'Mark Done' : 'Reactivate'}
+            {['active', 'pending'].includes(row.status) ? 'Mark Done' : 'Reactivate'}
           </button>
           <button
             onClick={() => {
@@ -281,7 +299,7 @@ export default function Reminders() {
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Active</p>
                 <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
-                  {reminders.filter(r => r.status === 'active' || r.status === 'pending').length}
+                  {reminders.filter(r => ['active', 'pending'].includes(r.status)).length}
                 </p>
               </div>
               <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/20 rounded-xl flex items-center justify-center">
@@ -294,7 +312,7 @@ export default function Reminders() {
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Completed</p>
                 <p className="text-3xl font-bold text-green-600 dark:text-green-400">
-                  {reminders.filter(r => r.status === 'done' || r.status === 'completed').length}
+                  {reminders.filter(r => ['done', 'completed'].includes(r.status)).length}
                 </p>
               </div>
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-xl flex items-center justify-center">

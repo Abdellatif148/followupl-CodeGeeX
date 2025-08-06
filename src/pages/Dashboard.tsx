@@ -52,6 +52,16 @@ export default function Dashboard() {
     loadDashboard()
   }, [])
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  }
+
+  const userName = user?.user_metadata?.full_name?.split(' ')[0] || 'there'
+
   if (loading) {
     return (
       <Layout>
@@ -68,16 +78,6 @@ export default function Dashboard() {
       </Layout>
     )
   }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    })
-  }
-
-  const userName = user?.user_metadata?.full_name?.split(' ')[0] || 'there'
 
   return (
     <Layout>
@@ -273,7 +273,7 @@ export default function Dashboard() {
                         'bg-yellow-500'
                       }`} />
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{invoice.title}</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{invoice.title || invoice.project}</p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
                           {invoice.clients?.name} • Due {formatDate(invoice.due_date)}
                         </p>

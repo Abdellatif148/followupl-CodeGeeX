@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Calendar, Clock, FileText, User, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
+import { Calendar, Clock, FileText, User, Loader2, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react'
 import { remindersApi, clientsApi } from '../lib/database'
 import { supabase } from '../lib/supabase'
 import type { Client } from '../types/database'
@@ -187,15 +187,25 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-          {editingReminder ? 'Edit Reminder' : 'Create New Reminder'}
-        </h2>
+        <div className="flex items-center">
+          {onCancel && (
+            <button
+              onClick={onCancel}
+              className="mr-3 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+          )}
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            {editingReminder ? 'Edit Reminder' : 'Create New Reminder'}
+          </h2>
+        </div>
         {onCancel && (
           <button
             onClick={onCancel}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         )}
       </div>

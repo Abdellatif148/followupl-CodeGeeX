@@ -1,223 +1,365 @@
-import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { User, Bell, Globe, Palette, Shield, CreditCard } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../hooks/useAuth';
-import { useDarkMode } from '../hooks/useDarkMode';
+import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import { 
+  User, Globe, Palette, CreditCard, Save, Loader2, 
+  CheckCircle, AlertCircle, Crown, ArrowLeft 
+} from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import Layout from '../components/Layout'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
+import { useDarkMode } from '../hooks/useDarkMode'
+import { profilesApi, currencyUtils } from '../lib/database'
+import LanguageSwitcher from '../components/LanguageSwitcher'
 
 interface Profile {
-  id: string;
-  full_name: string | null;
-  avatar_url: string | null;
-  currency: string;
-  timezone: string;
-  language: string;
-  plan: string;
+  id: string
+  full_name: string | null
+  avatar_url: string | null
+  currency: string
+  timezone: string
+  language: string
+  plan: string
 }
 
 export default function Settings() {
-  const { t, i18n } = useTranslation();
-  const { user } = useAuth();
-  const { isDarkMode, toggleDarkMode } = useDarkMode();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const { t, i18n } = useTranslation()
+  const { user, refreshProfile } = useAuth()
+  const { isDarkMode, toggleDarkMode } = useDarkMode()
+  const navigate = useNavigate()
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [notification, setNotification] = useState<{
+    type: 'success' | 'error'
+    message: string
+  } | null>(null)
+
+  const [formData, setFormData] = useState({
+    full_name: '',
+    currency: 'USD',
+    timezone: 'UTC',
+    language: 'en'
+  })
 
   useEffect(() => {
     if (user) {
-      fetchProfile();
+      fetchProfile()
     }
-  }, [user]);
+  }, [user])
+
+  // Auto-hide notification after 3 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [notification])
 
   const fetchProfile = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user?.id)
-        .single();
+      if (!user) return
 
-      if (error) throw error;
-      setProfile(data);
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateProfile = async (updates: Partial<Profile>) => {
-    if (!user) return;
-
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', user.id);
-
-      if (error) throw error;
+      const profileData = await profilesApi.get(user.id)
       
-      setProfile(prev => prev ? { ...prev, ...updates } : null);
+      if (profileData) {
+        setProfile(profileData)
+        setFormData({
+          full_name: profileData.full_name || '',
+          currency: profileData.currency || 'USD',
+          timezone: profileData.timezone || 'UTC',
+          language: profileData.language || 'en'
+        })
+      } else {
+        // Create profile if it doesn't exist
+        const newProfile = {
+          id: user.id,
+          full_name: user.user_metadata?.full_name || '',
+          currency: 'USD',
+          timezone: 'UTC',
+          language: 'en',
+          plan: 'free'
+        }
+        
+        const createdProfile = await profilesApi.create(newProfile)
+        setProfile(createdProfile)
+        setFormData({
+          full_name: createdProfile.full_name || '',
+          currency: createdProfile.currency || 'USD',
+          timezone: createdProfile.timezone || 'UTC',
+          language: createdProfile.language || 'en'
+        })
+      }
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error('Error fetching profile:', error)
+      setNotification({
+        type: 'error',
+        message: 'Failed to load profile settings'
+      })
     } finally {
-      setSaving(false);
+      setLoading(false)
     }
-  };
+  }
 
-  const handleLanguageChange = (language: string) => {
-    i18n.changeLanguage(language);
-    updateProfile({ language });
-  };
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const handleSave = async () => {
+    if (!user || !profile) return
+
+    setSaving(true)
+    setNotification(null)
+
+    try {
+      await profilesApi.update(user.id, {
+        full_name: formData.full_name.trim() || null,
+        currency: formData.currency,
+        timezone: formData.timezone,
+        language: formData.language
+      })
+
+      // Update language if changed
+      if (formData.language !== i18n.language) {
+        await i18n.changeLanguage(formData.language)
+      }
+
+      // Refresh profile in auth context
+      await refreshProfile()
+
+      setNotification({
+        type: 'success',
+        message: 'Settings saved successfully!'
+      })
+
+      // Update local profile state
+      setProfile(prev => prev ? {
+        ...prev,
+        full_name: formData.full_name.trim() || null,
+        currency: formData.currency,
+        timezone: formData.timezone,
+        language: formData.language
+      } : null)
+
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      setNotification({
+        type: 'error',
+        message: 'Failed to save settings. Please try again.'
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const availableCurrencies = currencyUtils.getAvailableCurrencies()
+
+  const timezones = [
+    { value: 'UTC', label: 'UTC' },
+    { value: 'America/New_York', label: 'Eastern Time (ET)' },
+    { value: 'America/Chicago', label: 'Central Time (CT)' },
+    { value: 'America/Denver', label: 'Mountain Time (MT)' },
+    { value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
+    { value: 'Europe/London', label: 'London (GMT)' },
+    { value: 'Europe/Paris', label: 'Paris (CET)' },
+    { value: 'Europe/Berlin', label: 'Berlin (CET)' },
+    { value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
+    { value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
+    { value: 'Asia/Kolkata', label: 'Mumbai (IST)' },
+    { value: 'Australia/Sydney', label: 'Sydney (AEST)' }
+  ]
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
-      </div>
-    );
+      <Layout>
+        <div className="p-6">
+          <div className="animate-pulse space-y-6">
+            <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3"></div>
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-32 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Layout>
+    )
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          {t('settings.title', 'Settings')}
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          {t('settings.subtitle', 'Manage your account preferences and settings')}
-        </p>
-      </div>
+    <Layout>
+      <div className="p-6 max-w-4xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              {t('settings.title')}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              {t('settings.subtitle')}
+            </p>
+          </div>
+        </div>
 
-      <div className="space-y-6">
+        {/* Notification */}
+        {notification && (
+          <div className={`p-4 rounded-lg flex items-start gap-3 ${
+            notification.type === 'success' 
+              ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+              : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+          }`}>
+            {notification.type === 'success' ? (
+              <CheckCircle className="w-5 h-5 text-green-500 dark:text-green-400 flex-shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
+            )}
+            <p className={`text-sm ${
+              notification.type === 'success' 
+                ? 'text-green-700 dark:text-green-300'
+                : 'text-red-700 dark:text-red-300'
+            }`}>
+              {notification.message}
+            </p>
+          </div>
+        )}
+
         {/* Profile Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center mb-4">
-            <User className="w-5 h-5 text-indigo-600 mr-2" />
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {t('settings.profile', 'Profile')}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center mb-6">
+            <User className="w-6 h-6 text-blue-600 dark:text-blue-400 mr-3" />
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              {t('settings.profileInfo')}
             </h2>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {t('settings.fullName', 'Full Name')}
+              <label htmlFor="full_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {t('settings.fullName')}
               </label>
               <input
                 type="text"
-                value={profile?.full_name || ''}
-                onChange={(e) => updateProfile({ full_name: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
-                placeholder={t('settings.enterFullName', 'Enter your full name')}
+                id="full_name"
+                name="full_name"
+                value={formData.full_name}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
+                placeholder="Enter your full name"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {t('settings.email', 'Email')}
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {t('settings.emailAddress')}
               </label>
               <input
                 type="email"
+                id="email"
                 value={user?.email || ''}
                 disabled
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-600 text-gray-500 dark:text-gray-400 rounded-xl cursor-not-allowed"
+                placeholder="Email cannot be changed"
               />
             </div>
           </div>
         </div>
 
         {/* Preferences Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center mb-4">
-            <Globe className="w-5 h-5 text-indigo-600 mr-2" />
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {t('settings.preferences', 'Preferences')}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center mb-6">
+            <Globe className="w-6 h-6 text-blue-600 dark:text-blue-400 mr-3" />
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              {t('settings.preferences')}
             </h2>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {t('settings.language', 'Language')}
+              <label htmlFor="language" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {t('settings.language')}
               </label>
               <select
-                value={profile?.language || 'en'}
-                onChange={(e) => handleLanguageChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                id="language"
+                name="language"
+                value={formData.language}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
               >
-                <option value="en">English</option>
-                <option value="es">Español</option>
-                <option value="fr">Français</option>
-                <option value="de">Deutsch</option>
-                <option value="it">Italiano</option>
-                <option value="hi">हिन्दी</option>
+                <option value="en">🇺🇸 English</option>
+                <option value="fr">🇫🇷 Français</option>
+                <option value="es">🇪🇸 Español</option>
+                <option value="de">🇩🇪 Deutsch</option>
+                <option value="it">🇮🇹 Italiano</option>
+                <option value="hi">🇮🇳 हिन्दी</option>
               </select>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {t('settings.currency', 'Currency')}
+              <label htmlFor="currency" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {t('settings.currency')}
               </label>
               <select
-                value={profile?.currency || 'USD'}
-                onChange={(e) => updateProfile({ currency: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                id="currency"
+                name="currency"
+                value={formData.currency}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
               >
-                <option value="USD">USD ($)</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="GBP">GBP (£)</option>
-                <option value="JPY">JPY (¥)</option>
-                <option value="CAD">CAD (C$)</option>
-                <option value="AUD">AUD (A$)</option>
+                {availableCurrencies.map((currency) => (
+                  <option key={currency.code} value={currency.code}>
+                    {currency.code} ({currency.symbol}) - {currency.name}
+                  </option>
+                ))}
               </select>
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {t('settings.timezone', 'Timezone')}
+              <label htmlFor="timezone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Timezone
               </label>
               <select
-                value={profile?.timezone || 'UTC'}
-                onChange={(e) => updateProfile({ timezone: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white"
+                id="timezone"
+                name="timezone"
+                value={formData.timezone}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
               >
-                <option value="UTC">UTC</option>
-                <option value="America/New_York">Eastern Time</option>
-                <option value="America/Chicago">Central Time</option>
-                <option value="America/Denver">Mountain Time</option>
-                <option value="America/Los_Angeles">Pacific Time</option>
-                <option value="Europe/London">London</option>
-                <option value="Europe/Paris">Paris</option>
-                <option value="Asia/Tokyo">Tokyo</option>
+                {timezones.map((tz) => (
+                  <option key={tz.value} value={tz.value}>
+                    {tz.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
         </div>
 
         {/* Appearance Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center mb-4">
-            <Palette className="w-5 h-5 text-indigo-600 mr-2" />
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {t('settings.appearance', 'Appearance')}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center mb-6">
+            <Palette className="w-6 h-6 text-blue-600 dark:text-blue-400 mr-3" />
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              Appearance
             </h2>
           </div>
           
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                {t('settings.darkMode', 'Dark Mode')}
+                {t('settings.darkMode')}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {t('settings.darkModeDescription', 'Toggle between light and dark themes')}
+                Toggle between light and dark themes
               </p>
             </div>
             <button
               onClick={toggleDarkMode}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                isDarkMode ? 'bg-indigo-600' : 'bg-gray-200'
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                isDarkMode ? 'bg-blue-600' : 'bg-gray-200'
               }`}
             >
               <span
@@ -229,38 +371,57 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Plan Section */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <div className="flex items-center mb-4">
-            <CreditCard className="w-5 h-5 text-indigo-600 mr-2" />
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {t('settings.subscription', 'Subscription')}
+        {/* Subscription Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <div className="flex items-center mb-6">
+            <CreditCard className="w-6 h-6 text-blue-600 dark:text-blue-400 mr-3" />
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              Subscription
             </h2>
           </div>
           
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                {t('settings.currentPlan', 'Current Plan')}
+                Current Plan
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 capitalize">
-                {profile?.plan || 'free'} {t('settings.plan', 'Plan')}
+                {profile?.plan || 'free'} Plan
               </p>
             </div>
             {profile?.plan === 'free' && (
-              <button className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors">
-                {t('settings.upgrade', 'Upgrade')}
+              <button 
+                onClick={() => navigate('/upgrade')}
+                className="flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200 font-medium"
+              >
+                <Crown className="w-4 h-4 mr-2" />
+                Upgrade to Pro
               </button>
             )}
           </div>
         </div>
-      </div>
 
-      {saving && (
-        <div className="fixed bottom-4 right-4 bg-indigo-600 text-white px-4 py-2 rounded-md shadow-lg">
-          {t('settings.saving', 'Saving...')}
+        {/* Save Button */}
+        <div className="flex justify-end">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="w-5 h-5 mr-2" />
+                {t('settings.saveChanges')}
+              </>
+            )}
+          </button>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    </Layout>
+  )
 }

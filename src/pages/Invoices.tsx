@@ -49,10 +49,12 @@ export default function Invoices() {
 
   const filteredInvoices = invoices.filter(invoice => {
     const matchesSearch = (invoice.project || invoice.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         invoice.clients?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         invoice.clients?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          invoice.invoice_number?.toLowerCase().includes(searchQuery.toLowerCase())
     
-    const matchesStatus = filterStatus === 'all' || invoice.status === filterStatus
+    const matchesStatus = filterStatus === 'all' || 
+                         (filterStatus === 'paid' && invoice.status === 'paid') ||
+                         (filterStatus === 'unpaid' && ['unpaid', 'pending'].includes(invoice.status))
     
     return matchesSearch && matchesStatus
   })
@@ -140,9 +142,9 @@ export default function Invoices() {
   }
 
   // Calculate totals
-  const totalAmount = invoices.reduce((sum, inv) => sum + inv.amount, 0)
-  const paidAmount = invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.amount, 0)
-  const unpaidAmount = invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'pending').reduce((sum, inv) => sum + inv.amount, 0)
+  const totalAmount = invoices.reduce((sum, inv) => sum + (inv.amount || 0), 0)
+  const paidAmount = invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + (inv.amount || 0), 0)
+  const unpaidAmount = invoices.filter(inv => ['unpaid', 'pending'].includes(inv.status)).reduce((sum, inv) => sum + (inv.amount || 0), 0)
 
   const columns = [
     {
@@ -178,7 +180,7 @@ export default function Invoices() {
       sortable: true,
       render: (value: number, row: any) => (
         <div className="font-semibold text-gray-900 dark:text-white">
-          {formatCurrency(value, row.currency)}
+          {formatCurrency(value || 0, row.currency)}
         </div>
       )
     },
@@ -190,7 +192,7 @@ export default function Invoices() {
         <div className="flex items-center space-x-2">
           <Calendar className="w-4 h-4 text-gray-400" />
           <span className={
-            (row.status === 'unpaid' || row.status === 'pending') && new Date(value) < new Date()
+            ['unpaid', 'pending'].includes(row.status) && new Date(value) < new Date()
               ? 'text-red-600 dark:text-red-400'
               : ''
           }>
@@ -204,7 +206,7 @@ export default function Invoices() {
       label: 'Actions',
       render: (value: any, row: any) => (
         <div className="flex items-center space-x-2">
-          {(row.status === 'unpaid' || row.status === 'pending') && (
+          {['unpaid', 'pending'].includes(row.status) && (
             <button
               onClick={() => markAsPaid(row.id)}
               className="px-3 py-1 text-sm bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/40 transition-colors duration-200"

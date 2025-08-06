@@ -12,7 +12,7 @@ import { useCurrency } from '../hooks/useCurrency'
 import { useBusinessAnalytics } from '../hooks/useAnalytics'
 
 export default function Expenses() {
-  const { trackBusinessAction } = useBusinessAnalytics()
+  const { trackExpenseAction } = useBusinessAnalytics()
   const [expenses, setExpenses] = useState<any[]>([])
   const [clients, setClients] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -64,7 +64,7 @@ export default function Expenses() {
     const matchesSearch = expense.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          expense.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          expense.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         expense.clients?.name.toLowerCase().includes(searchQuery.toLowerCase())
+                         expense.clients?.name?.toLowerCase().includes(searchQuery.toLowerCase())
     
     const matchesCategory = filterCategory === 'all' || expense.category === filterCategory
     const matchesStatus = filterStatus === 'all' || expense.status === filterStatus
@@ -106,7 +106,7 @@ export default function Expenses() {
         await expensesApi.delete(expenseId)
         
         // Track expense deletion
-        trackBusinessAction('delete', 'expense', {
+        trackExpenseAction('delete', {
           expense_id: expenseId
         })
         
@@ -169,7 +169,7 @@ export default function Expenses() {
       render: (value: number, row: any) => (
         <div>
           <div className="font-semibold text-gray-900 dark:text-white">
-            {formatCurrency(value, row.currency)}
+            {formatCurrency(value || 0, row.currency)}
           </div>
           {row.tax_deductible && (
             <div className="text-xs text-green-600 dark:text-green-400">Tax deductible</div>

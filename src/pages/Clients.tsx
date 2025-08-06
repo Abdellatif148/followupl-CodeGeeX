@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { 
-  Plus, Search, Filter, Edit, Trash2, 
-  Mail, Phone, ExternalLink, Tag, Calendar, DollarSign,
+  Plus, Search, Edit, Trash2, 
+  Mail, Phone, Tag, Calendar, DollarSign,
   CheckCircle, XCircle, AlertTriangle, ToggleLeft, ToggleRight
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -51,6 +51,10 @@ export default function Clients() {
       }
     } catch (error) {
       console.error('Error loading clients:', error)
+      setToast({
+        type: 'error',
+        message: 'Failed to load clients'
+      })
     } finally {
       setLoading(false)
     }
@@ -98,7 +102,7 @@ export default function Clients() {
         // Show success toast
         setToast({
           type: 'success',
-          message: 'Client deleted ❌'
+          message: 'Client deleted successfully'
         })
         
         loadClients()
@@ -128,7 +132,7 @@ export default function Clients() {
       // Show success toast
       setToast({
         type: 'success',
-        message: `Client marked as ${newStatus} 🔁`
+        message: `Client marked as ${newStatus}`
       })
       
       loadClients()
@@ -146,7 +150,7 @@ export default function Clients() {
     setEditingClient(null)
     setToast({
       type: 'success',
-      message: 'Client updated successfully ✅'
+      message: 'Client updated successfully'
     })
     loadClients()
   }
@@ -155,6 +159,7 @@ export default function Clients() {
     setShowEditForm(false)
     setEditingClient(null)
   }
+
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
       case 'fiverr': return '🟢'
@@ -194,12 +199,6 @@ export default function Clients() {
     return (
       <Layout>
         <div className="p-6 max-w-4xl mx-auto">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Edit Client</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Update client information and details
-            </p>
-          </div>
           <ClientForm 
             onSuccess={handleFormSuccess}
             onCancel={handleFormCancel}
@@ -209,6 +208,7 @@ export default function Clients() {
       </Layout>
     )
   }
+
   return (
     <Layout>
       <div className="p-6 space-y-6">
@@ -302,7 +302,7 @@ export default function Clients() {
               <div>
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Earned</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {formatCurrency(clients.reduce((sum, c) => sum + c.total_earned, 0))}
+                  {formatCurrency(clients.reduce((sum, c) => sum + (c.total_earned || 0), 0))}
                 </p>
               </div>
               <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/20 rounded-xl flex items-center justify-center">
@@ -415,10 +415,10 @@ export default function Clients() {
                     <div className="flex items-center space-x-6">
                       <div className="text-right">
                         <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                          {formatCurrency(client.total_earned)}
+                          {formatCurrency(client.total_earned || 0)}
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {client.total_projects} {client.total_projects === 1 ? 'project' : 'projects'}
+                          {client.total_projects || 0} {(client.total_projects || 0) === 1 ? 'project' : 'projects'}
                         </p>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -445,6 +445,7 @@ export default function Clients() {
                             <ToggleLeft className="w-5 h-5" />
                           )}
                         </button>
+
                         {/* Delete Icon */}
                         <button
                           onClick={() => handleDeleteClient(client)}

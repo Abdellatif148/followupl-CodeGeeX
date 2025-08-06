@@ -1,6 +1,7 @@
-import { useState, useEffect, createContext, useContext } from 'react'
+import { useState, useEffect, createContext, useContext, ReactNode } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { profilesApi } from '../lib/database'
 
 interface AuthContextType {
   user: User | null
@@ -8,22 +9,36 @@ interface AuthContextType {
   loading: boolean
   isAuthenticated: boolean
   initialized: boolean
+  profile: any
   signOut: () => Promise<void>
   refreshSession: () => Promise<void>
+  refreshProfile: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function useAuth(): AuthContextType {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}
+
+interface AuthProviderProps {
+  children: ReactNode
+}
+
+export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [initialized, setInitialized] = useState(false)
+  const [profile, setProfile] = useState<any>(null)
 
   useEffect(() => {
     let mounted = true
 
-    // Get initial session
     const getInitialSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession()
@@ -35,6 +50,12 @@ export function useAuth(): AuthContextType {
         if (mounted) {
           setSession(session)
           setUser(session?.user ?? null)
+          
+          // Load profile if user exists
+          if (session?.user) {
+            await loadProfile(session.user.id)
+          }
+          
           setLoading(false)
           setInitialized(true)
         }
@@ -49,26 +70,21 @@ export function useAuth(): AuthContextType {
 
     getInitialSession()
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.id)
-        
         if (mounted) {
           setSession(session)
           setUser(session?.user ?? null)
-          setLoading(false)
           
-          // Handle specific auth events
-          if (event === 'SIGNED_IN') {
-            console.log('User signed in:', session?.user?.email)
+          if (event === 'SIGNED_IN' && session?.user) {
+            await loadProfile(session.user.id)
           } else if (event === 'SIGNED_OUT') {
-            console.log('User signed out')
-            // Clear any cached data
+            setProfile(null)
             localStorage.removeItem('followuply-cached-profile')
-          } else if (event === 'TOKEN_REFRESHED') {
-            console.log('Token refreshed')
+            localStorage.removeItem('followuply-language-selected')
           }
+          
+          setLoading(false)
         }
       }
     )
@@ -78,6 +94,15 @@ export function useAuth(): AuthContextType {
       subscription.unsubscribe()
     }
   }, [])
+
+  const loadProfile = async (userId: string) => {
+    try {
+      const profileData = await profilesApi.get(userId)
+      setProfile(profileData)
+    } catch (error) {
+      console.error('Error loading profile:', error)
+    }
+  }
 
   const signOut = async () => {
     try {
@@ -89,13 +114,12 @@ export function useAuth(): AuthContextType {
         throw error
       }
       
-      // Clear local storage
       localStorage.removeItem('followuply-cached-profile')
       localStorage.removeItem('followuply-language-selected')
       
-      // Reset state
       setUser(null)
       setSession(null)
+      setProfile(null)
     } catch (error) {
       console.error('Sign out error:', error)
       throw error
@@ -121,35 +145,29 @@ export function useAuth(): AuthContextType {
     }
   }
 
+  const refreshProfile = async () => {
+    if (user) {
+      await loadProfile(user.id)
+    }
+  }
+
   const isAuthenticated = !!user && !!session
 
-  return {
+  const value: AuthContextType = {
     user,
     session,
     loading,
     isAuthenticated,
     initialized,
+    profile,
     signOut,
-    refreshSession
+    refreshSession,
+    refreshProfile
   }
-}
 
-// Auth Provider Component (if needed for context)
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const auth = useAuth()
-  
   return (
-    <AuthContext.Provider value={auth}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   )
-}
-
-// Hook to use auth context (alternative implementation)
-export function useAuthContext(): AuthContextType {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuthContext must be used within an AuthProvider')
-  }
-  return context
 }

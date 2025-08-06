@@ -26,78 +26,118 @@ interface InvoiceWithClient extends Invoice {
   } | null
 }
 
+interface ExpenseWithClient extends Expense {
+  clients?: {
+    id: string
+    name: string
+  } | null
+}
+
 // Client operations
 export const clientsApi = {
-  async getAll(userId: string) {
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return data as Client[]
+  async getAll(userId: string): Promise<Client[]> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching clients:', error)
+      throw error
+    }
   },
 
-  async getById(id: string) {
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('id', id)
-      .single()
-    
-    if (error) throw error
-    return data as Client
+  async getById(id: string): Promise<Client> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', id)
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching client:', error)
+      throw error
+    }
   },
 
-  async create(client: ClientInsert) {
-    const { data, error } = await supabase
-      .from('clients')
-      .insert(client)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Client
+  async create(client: ClientInsert): Promise<Client> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .insert(client)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating client:', error)
+      throw error
+    }
   },
 
-  async update(id: string, updates: ClientUpdate) {
-    const { data, error } = await supabase
-      .from('clients')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single()
-    
-    if (error) throw error
-    return data as Client
+  async update(id: string, updates: ClientUpdate): Promise<Client> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating client:', error)
+      throw error
+    }
   },
 
-  async delete(id: string) {
-    const { error } = await supabase
-      .from('clients')
-      .delete()
-      .eq('id', id)
-    
-    if (error) throw error
+  async delete(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting client:', error)
+      throw error
+    }
   },
 
-  async search(userId: string, query: string) {
-    const { data, error } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('user_id', userId)
-      .or(`name.ilike.%${query}%,email.ilike.%${query}%,company.ilike.%${query}%,notes.ilike.%${query}%`)
-      .order('created_at', { ascending: false })
-    
-    if (error) throw error
-    return data as Client[]
+  async search(userId: string, query: string): Promise<Client[]> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('user_id', userId)
+        .or(`name.ilike.%${query}%,email.ilike.%${query}%,company.ilike.%${query}%,notes.ilike.%${query}%`)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error searching clients:', error)
+      throw error
+    }
   }
 }
 
 // Reminder operations
 export const remindersApi = {
-  async requestBrowserNotificationPermission() {
+  async requestBrowserNotificationPermission(): Promise<void> {
     if (!('Notification' in window)) {
       console.log('This browser does not support desktop notification')
       return
@@ -112,12 +152,12 @@ export const remindersApi = {
     }
   },
 
-  async showBrowserNotification(reminder: Reminder) {
+  async showBrowserNotification(reminder: Reminder): Promise<void> {
     if (Notification.permission !== 'granted') return
 
-    new Notification('Followuply', {
+    new Notification('FollowUply', {
       body: `⏰ ${reminder.title} is due soon!`,
-      icon: '/logo192.png',
+      icon: '/followuplyImage-removebg-preview.png',
       data: {
         reminderId: reminder.id,
         type: 'reminder'
@@ -125,7 +165,7 @@ export const remindersApi = {
     })
   },
 
-  async getAll(userId: string) {
+  async getAll(userId: string): Promise<ReminderWithClient[]> {
     try {
       const { data, error } = await supabase
         .from('reminders')
@@ -140,18 +180,15 @@ export const remindersApi = {
         .eq('user_id', userId)
         .order('due_date', { ascending: true })
       
-      if (error) {
-        console.error('Error fetching reminders:', error)
-        throw error
-      }
+      if (error) throw error
       return data || []
     } catch (error) {
-      console.error('Error in remindersApi.getAll:', error)
+      console.error('Error fetching reminders:', error)
       throw error
     }
   },
 
-  async getUpcoming(userId: string, days: number = 7) {
+  async getUpcoming(userId: string, days: number = 7): Promise<ReminderWithClient[]> {
     try {
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + days)
@@ -171,13 +208,10 @@ export const remindersApi = {
         .lte('due_date', futureDate.toISOString())
         .order('due_date', { ascending: true })
       
-      if (error) {
-        console.error('Error fetching upcoming reminders:', error)
-        throw error
-      }
+      if (error) throw error
       return data || []
     } catch (error) {
-      console.error('Error in remindersApi.getUpcoming:', error)
+      console.error('Error fetching upcoming reminders:', error)
       throw error
     }
   },
@@ -190,13 +224,10 @@ export const remindersApi = {
         .select()
         .single()
       
-      if (error) {
-        console.error('Error creating reminder:', error)
-        throw error
-      }
+      if (error) throw error
       return data
     } catch (error) {
-      console.error('Error in remindersApi.create:', error)
+      console.error('Error creating reminder:', error)
       throw error
     }
   },
@@ -213,13 +244,10 @@ export const remindersApi = {
         .select()
         .single()
       
-      if (error) {
-        console.error('Error updating reminder:', error)
-        throw error
-      }
+      if (error) throw error
       return data
     } catch (error) {
-      console.error('Error in remindersApi.update:', error)
+      console.error('Error updating reminder:', error)
       throw error
     }
   },
@@ -231,12 +259,9 @@ export const remindersApi = {
         .delete()
         .eq('id', id)
       
-      if (error) {
-        console.error('Error deleting reminder:', error)
-        throw error
-      }
+      if (error) throw error
     } catch (error) {
-      console.error('Error in remindersApi.delete:', error)
+      console.error('Error deleting reminder:', error)
       throw error
     }
   },
@@ -254,13 +279,10 @@ export const remindersApi = {
         .select()
         .single()
       
-      if (error) {
-        console.error('Error marking reminder as completed:', error)
-        throw error
-      }
+      if (error) throw error
       return data
     } catch (error) {
-      console.error('Error in remindersApi.markCompleted:', error)
+      console.error('Error marking reminder as completed:', error)
       throw error
     }
   }
@@ -268,7 +290,7 @@ export const remindersApi = {
 
 // Invoice operations
 export const invoicesApi = {
-  async getAll(userId: string) {
+  async getAll(userId: string): Promise<InvoiceWithClient[]> {
     try {
       const { data, error } = await supabase
         .from('invoices')
@@ -287,12 +309,12 @@ export const invoicesApi = {
       if (error) throw error
       return data || []
     } catch (error) {
-      console.error('Error in invoicesApi.getAll:', error)
+      console.error('Error fetching invoices:', error)
       throw error
     }
   },
 
-  async getOverdue(userId: string) {
+  async getOverdue(userId: string): Promise<InvoiceWithClient[]> {
     try {
       const today = new Date().toISOString().split('T')[0]
       
@@ -315,12 +337,12 @@ export const invoicesApi = {
       if (error) throw error
       return data || []
     } catch (error) {
-      console.error('Error in invoicesApi.getOverdue:', error)
+      console.error('Error fetching overdue invoices:', error)
       throw error
     }
   },
 
-  async create(invoice: InvoiceInsert) {
+  async create(invoice: InvoiceInsert): Promise<Invoice> {
     try {
       const { data, error } = await supabase
         .from('invoices')
@@ -329,14 +351,14 @@ export const invoicesApi = {
         .single()
       
       if (error) throw error
-      return data as Invoice
+      return data
     } catch (error) {
-      console.error('Error in invoicesApi.create:', error)
+      console.error('Error creating invoice:', error)
       throw error
     }
   },
 
-  async update(id: string, updates: InvoiceUpdate) {
+  async update(id: string, updates: InvoiceUpdate): Promise<Invoice> {
     try {
       const { data, error } = await supabase
         .from('invoices')
@@ -349,14 +371,14 @@ export const invoicesApi = {
         .single()
       
       if (error) throw error
-      return data as Invoice
+      return data
     } catch (error) {
-      console.error('Error in invoicesApi.update:', error)
+      console.error('Error updating invoice:', error)
       throw error
     }
   },
 
-  async delete(id: string) {
+  async delete(id: string): Promise<void> {
     try {
       const { error } = await supabase
         .from('invoices')
@@ -365,12 +387,12 @@ export const invoicesApi = {
       
       if (error) throw error
     } catch (error) {
-      console.error('Error in invoicesApi.delete:', error)
+      console.error('Error deleting invoice:', error)
       throw error
     }
   },
 
-  async markPaid(id: string, paymentMethod?: string) {
+  async markPaid(id: string, paymentMethod?: string): Promise<Invoice> {
     try {
       const { data, error } = await supabase
         .from('invoices')
@@ -385,9 +407,9 @@ export const invoicesApi = {
         .single()
       
       if (error) throw error
-      return data as Invoice
+      return data
     } catch (error) {
-      console.error('Error in invoicesApi.markPaid:', error)
+      console.error('Error marking invoice as paid:', error)
       throw error
     }
   }
@@ -395,7 +417,7 @@ export const invoicesApi = {
 
 // Expense operations
 export const expensesApi = {
-  async getAll(userId: string) {
+  async getAll(userId: string): Promise<ExpenseWithClient[]> {
     try {
       const { data, error } = await supabase
         .from('expenses')
@@ -412,12 +434,12 @@ export const expensesApi = {
       if (error) throw error
       return data || []
     } catch (error) {
-      console.error('Error in expensesApi.getAll:', error)
+      console.error('Error fetching expenses:', error)
       throw error
     }
   },
 
-  async create(expense: ExpenseInsert) {
+  async create(expense: ExpenseInsert): Promise<Expense> {
     try {
       const { data, error } = await supabase
         .from('expenses')
@@ -426,14 +448,14 @@ export const expensesApi = {
         .single()
       
       if (error) throw error
-      return data as Expense
+      return data
     } catch (error) {
-      console.error('Error in expensesApi.create:', error)
+      console.error('Error creating expense:', error)
       throw error
     }
   },
 
-  async update(id: string, updates: ExpenseUpdate) {
+  async update(id: string, updates: ExpenseUpdate): Promise<Expense> {
     try {
       const { data, error } = await supabase
         .from('expenses')
@@ -446,14 +468,14 @@ export const expensesApi = {
         .single()
       
       if (error) throw error
-      return data as Expense
+      return data
     } catch (error) {
-      console.error('Error in expensesApi.update:', error)
+      console.error('Error updating expense:', error)
       throw error
     }
   },
 
-  async delete(id: string) {
+  async delete(id: string): Promise<void> {
     try {
       const { error } = await supabase
         .from('expenses')
@@ -462,12 +484,12 @@ export const expensesApi = {
       
       if (error) throw error
     } catch (error) {
-      console.error('Error in expensesApi.delete:', error)
+      console.error('Error deleting expense:', error)
       throw error
     }
   },
 
-  async getByCategory(userId: string, category: string) {
+  async getByCategory(userId: string, category: string): Promise<Expense[]> {
     try {
       const { data, error } = await supabase
         .from('expenses')
@@ -479,7 +501,24 @@ export const expensesApi = {
       if (error) throw error
       return data || []
     } catch (error) {
-      console.error('Error in expensesApi.getByCategory:', error)
+      console.error('Error fetching expenses by category:', error)
+      throw error
+    }
+  },
+
+  async getTaxDeductible(userId: string): Promise<Expense[]> {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('tax_deductible', true)
+        .order('expense_date', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching tax deductible expenses:', error)
       throw error
     }
   }
@@ -487,7 +526,7 @@ export const expensesApi = {
 
 // Profile operations
 export const profilesApi = {
-  async get(userId: string) {
+  async get(userId: string): Promise<Profile | null> {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -496,14 +535,14 @@ export const profilesApi = {
         .maybeSingle()
       
       if (error) throw error
-      return data as Profile | null
+      return data
     } catch (error) {
-      console.error('Error in profilesApi.get:', error)
+      console.error('Error fetching profile:', error)
       throw error
     }
   },
 
-  async create(profile: ProfileInsert) {
+  async create(profile: ProfileInsert): Promise<Profile> {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -512,14 +551,14 @@ export const profilesApi = {
         .single()
       
       if (error) throw error
-      return data as Profile
+      return data
     } catch (error) {
-      console.error('Error in profilesApi.create:', error)
+      console.error('Error creating profile:', error)
       throw error
     }
   },
 
-  async update(userId: string, updates: ProfileUpdate) {
+  async update(userId: string, updates: ProfileUpdate): Promise<Profile> {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -532,9 +571,9 @@ export const profilesApi = {
         .single()
       
       if (error) throw error
-      return data as Profile
+      return data
     } catch (error) {
-      console.error('Error in profilesApi.update:', error)
+      console.error('Error updating profile:', error)
       throw error
     }
   }
@@ -542,7 +581,7 @@ export const profilesApi = {
 
 // Notification operations
 export const notificationsApi = {
-  async getAll(userId: string) {
+  async getAll(userId: string): Promise<Notification[]> {
     try {
       const { data, error } = await supabase
         .from('notifications')
@@ -551,14 +590,14 @@ export const notificationsApi = {
         .order('created_at', { ascending: false })
       
       if (error) throw error
-      return data as Notification[]
+      return data || []
     } catch (error) {
-      console.error('Error in notificationsApi.getAll:', error)
+      console.error('Error fetching notifications:', error)
       throw error
     }
   },
 
-  async getUnread(userId: string) {
+  async getUnread(userId: string): Promise<Notification[]> {
     try {
       const { data, error } = await supabase
         .from('notifications')
@@ -568,14 +607,14 @@ export const notificationsApi = {
         .order('created_at', { ascending: false })
       
       if (error) throw error
-      return data as Notification[]
+      return data || []
     } catch (error) {
-      console.error('Error in notificationsApi.getUnread:', error)
+      console.error('Error fetching unread notifications:', error)
       throw error
     }
   },
 
-  async markAsRead(id: string) {
+  async markAsRead(id: string): Promise<void> {
     try {
       const { error } = await supabase
         .from('notifications')
@@ -584,12 +623,12 @@ export const notificationsApi = {
       
       if (error) throw error
     } catch (error) {
-      console.error('Error in notificationsApi.markAsRead:', error)
+      console.error('Error marking notification as read:', error)
       throw error
     }
   },
 
-  async markAllAsRead(userId: string) {
+  async markAllAsRead(userId: string): Promise<void> {
     try {
       const { error } = await supabase
         .from('notifications')
@@ -599,12 +638,12 @@ export const notificationsApi = {
       
       if (error) throw error
     } catch (error) {
-      console.error('Error in notificationsApi.markAllAsRead:', error)
+      console.error('Error marking all notifications as read:', error)
       throw error
     }
   },
 
-  async create(notification: NotificationInsert) {
+  async create(notification: NotificationInsert): Promise<Notification> {
     try {
       const { data, error } = await supabase
         .from('notifications')
@@ -613,9 +652,9 @@ export const notificationsApi = {
         .single()
       
       if (error) throw error
-      return data as Notification
+      return data
     } catch (error) {
-      console.error('Error in notificationsApi.create:', error)
+      console.error('Error creating notification:', error)
       throw error
     }
   }
@@ -660,7 +699,7 @@ export const dashboardApi = {
         recentExpenses: expenses.slice(0, 5)
       }
     } catch (error) {
-      console.error('Error in dashboardApi.getStats:', error)
+      console.error('Error fetching dashboard stats:', error)
       throw error
     }
   }

@@ -43,6 +43,7 @@ export interface Database {
           name: string
           email: string | null
           phone: string | null
+          company: string | null
           platform: 'fiverr' | 'upwork' | 'direct' | 'other'
           platform_profile: string | null
           contact_method: 'email' | 'whatsapp' | 'telegram' | 'discord' | 'other'
@@ -61,6 +62,7 @@ export interface Database {
           name: string
           email?: string | null
           phone?: string | null
+          company?: string | null
           platform?: 'fiverr' | 'upwork' | 'direct' | 'other'
           platform_profile?: string | null
           contact_method?: 'email' | 'whatsapp' | 'telegram' | 'discord' | 'other'
@@ -79,6 +81,7 @@ export interface Database {
           name?: string
           email?: string | null
           phone?: string | null
+          company?: string | null
           platform?: 'fiverr' | 'upwork' | 'direct' | 'other'
           platform_profile?: string | null
           contact_method?: 'email' | 'whatsapp' | 'telegram' | 'discord' | 'other'
@@ -99,10 +102,12 @@ export interface Database {
           client_id: string | null
           title: string
           message: string | null
+          description: string | null
           due_date: string
+          datetime: string | null
           reminder_type: 'follow_up' | 'payment' | 'project_deadline' | 'custom'
           priority: 'low' | 'medium' | 'high' | 'urgent'
-          status: 'pending' | 'completed' | 'snoozed' | 'cancelled'
+          status: 'pending' | 'completed' | 'snoozed' | 'cancelled' | 'active' | 'done'
           is_recurring: boolean
           recurring_interval: 'daily' | 'weekly' | 'monthly' | 'yearly' | null
           ai_suggested: boolean
@@ -117,10 +122,12 @@ export interface Database {
           client_id?: string | null
           title: string
           message?: string | null
+          description?: string | null
           due_date: string
+          datetime?: string | null
           reminder_type?: 'follow_up' | 'payment' | 'project_deadline' | 'custom'
           priority?: 'low' | 'medium' | 'high' | 'urgent'
-          status?: 'pending' | 'completed' | 'snoozed' | 'cancelled'
+          status?: 'pending' | 'completed' | 'snoozed' | 'cancelled' | 'active' | 'done'
           is_recurring?: boolean
           recurring_interval?: 'daily' | 'weekly' | 'monthly' | 'yearly' | null
           ai_suggested?: boolean
@@ -135,10 +142,12 @@ export interface Database {
           client_id?: string | null
           title?: string
           message?: string | null
+          description?: string | null
           due_date?: string
+          datetime?: string | null
           reminder_type?: 'follow_up' | 'payment' | 'project_deadline' | 'custom'
           priority?: 'low' | 'medium' | 'high' | 'urgent'
-          status?: 'pending' | 'completed' | 'snoozed' | 'cancelled'
+          status?: 'pending' | 'completed' | 'snoozed' | 'cancelled' | 'active' | 'done'
           is_recurring?: boolean
           recurring_interval?: 'daily' | 'weekly' | 'monthly' | 'yearly' | null
           ai_suggested?: boolean
@@ -155,11 +164,12 @@ export interface Database {
           client_id: string
           invoice_number: string | null
           title: string
+          project: string | null
           description: string | null
           amount: number
           currency: string
           due_date: string
-          status: 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled'
+          status: 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled' | 'unpaid'
           payment_method: string | null
           payment_date: string | null
           late_fee: number
@@ -175,11 +185,12 @@ export interface Database {
           client_id: string
           invoice_number?: string | null
           title: string
+          project?: string | null
           description?: string | null
           amount: number
           currency?: string
           due_date: string
-          status?: 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled'
+          status?: 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled' | 'unpaid'
           payment_method?: string | null
           payment_date?: string | null
           late_fee?: number
@@ -195,11 +206,12 @@ export interface Database {
           client_id?: string
           invoice_number?: string | null
           title?: string
+          project?: string | null
           description?: string | null
           amount?: number
           currency?: string
           due_date?: string
-          status?: 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled'
+          status?: 'draft' | 'sent' | 'pending' | 'paid' | 'overdue' | 'cancelled' | 'unpaid'
           payment_method?: string | null
           payment_date?: string | null
           late_fee?: number
@@ -248,62 +260,62 @@ export interface Database {
           created_at?: string
         }
       }
-    }
-  }
-  expenses: {
-    Row: {
-      id: string
-      user_id: string
-      client_id: string | null
-      title: string
-      description: string | null
-      amount: number
-      currency: string
-      category: string
-      subcategory: string | null
-      expense_date: string
-      payment_method: string | null
-      tax_deductible: boolean
-      status: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
-      tags: string[] | null
-      created_at: string
-      updated_at: string
-    }
-    Insert: {
-      id?: string
-      user_id: string
-      client_id?: string | null
-      title: string
-      description?: string | null
-      amount: number
-      currency: string
-      category: string
-      subcategory?: string | null
-      expense_date: string
-      payment_method?: string | null
-      tax_deductible?: boolean
-      status?: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
-      tags?: string[] | null
-      created_at?: string
-      updated_at?: string
-    }
-    Update: {
-      id?: string
-      user_id?: string
-      client_id?: string | null
-      title?: string
-      description?: string | null
-      amount?: number
-      currency?: string
-      category?: string
-      subcategory?: string | null
-      expense_date?: string
-      payment_method?: string | null
-      tax_deductible?: boolean
-      status?: 'pending' | 'approved' | 'reimbursed' | 'reconciled'
-      tags?: string[] | null
-      created_at?: string
-      updated_at?: string
+      expenses: {
+        Row: {
+          id: string
+          user_id: string | null
+          client_id: string | null
+          title: string
+          description: string | null
+          amount: number
+          currency: string
+          category: string
+          subcategory: string | null
+          expense_date: string
+          payment_method: string | null
+          tax_deductible: boolean
+          status: 'pending' | 'approved' | 'reimbursed' | 'reconciled' | null
+          tags: string[] | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          client_id?: string | null
+          title: string
+          description?: string | null
+          amount: number
+          currency: string
+          category: string
+          subcategory?: string | null
+          expense_date: string
+          payment_method?: string | null
+          tax_deductible?: boolean
+          status?: 'pending' | 'approved' | 'reimbursed' | 'reconciled' | null
+          tags?: string[] | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          client_id?: string | null
+          title?: string
+          description?: string | null
+          amount?: number
+          currency?: string
+          category?: string
+          subcategory?: string | null
+          expense_date?: string
+          payment_method?: string | null
+          tax_deductible?: boolean
+          status?: 'pending' | 'approved' | 'reimbursed' | 'reconciled' | null
+          tags?: string[] | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
 }

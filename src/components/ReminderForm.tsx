@@ -19,7 +19,9 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
     description: '',
     client_id: '',
     date: '',
-    time: ''
+    time: '',
+    priority: 'medium',
+    reminder_type: 'custom'
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [notification, setNotification] = useState<{
@@ -37,7 +39,9 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
         description: editingReminder.description || editingReminder.message || '',
         client_id: editingReminder.client_id || '',
         date: reminderDate.toISOString().split('T')[0],
-        time: reminderDate.toTimeString().slice(0, 5)
+        time: reminderDate.toTimeString().slice(0, 5),
+        priority: editingReminder.priority || 'medium',
+        reminder_type: editingReminder.reminder_type || 'custom'
       })
     }
   }, [editingReminder])
@@ -117,8 +121,8 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
         due_date: datetime.toISOString(),
         datetime: datetime.toISOString(),
         status: 'active' as const,
-        reminder_type: 'custom' as const,
-        priority: 'medium' as const
+        reminder_type: formData.reminder_type as 'follow_up' | 'payment' | 'project_deadline' | 'custom',
+        priority: formData.priority as 'low' | 'medium' | 'high' | 'urgent'
       }
 
       if (editingReminder) {
@@ -158,7 +162,9 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
           description: '',
           client_id: '',
           date: '',
-          time: ''
+          time: '',
+          priority: 'medium',
+          reminder_type: 'custom'
         })
       }
 
@@ -272,6 +278,46 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
                   {client.name} {client.company && `(${client.company})`}
                 </option>
               ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label htmlFor="reminder_type" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Type
+            </label>
+            <select
+              id="reminder_type"
+              name="reminder_type"
+              value={formData.reminder_type}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
+              disabled={isSubmitting}
+            >
+              <option value="custom">Custom</option>
+              <option value="follow_up">Follow Up</option>
+              <option value="payment">Payment</option>
+              <option value="project_deadline">Project Deadline</option>
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="priority" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Priority
+            </label>
+            <select
+              id="priority"
+              name="priority"
+              value={formData.priority}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
+              disabled={isSubmitting}
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
             </select>
           </div>
         </div>

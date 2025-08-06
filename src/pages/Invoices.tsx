@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { 
-  Plus, Search, Filter, DollarSign, Calendar, AlertTriangle,
-  CheckCircle, Clock, MoreVertical, Eye, Send, Download, Edit, Trash2, FileText
+  Plus, Search, DollarSign, Calendar,
+  CheckCircle, Clock, Edit, Trash2, FileText
 } from 'lucide-react'
 import Layout from '../components/Layout'
 import InvoiceForm from '../components/InvoiceForm'
@@ -9,8 +9,10 @@ import Table from '../components/Table'
 import { invoicesApi, clientsApi } from '../lib/database'
 import { supabase } from '../lib/supabase'
 import { useCurrency } from '../hooks/useCurrency'
+import { useBusinessAnalytics } from '../hooks/useAnalytics'
 
 export default function Invoices() {
+  const { trackInvoiceAction } = useBusinessAnalytics()
   const [invoices, setInvoices] = useState<any[]>([])
   const [clients, setClients] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -59,6 +61,8 @@ export default function Invoices() {
     switch (status) {
       case 'paid': return 'bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300'
       case 'unpaid': return 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300'
+      case 'pending': return 'bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300'
+      case 'overdue': return 'bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300'
       default: return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
     }
   }
@@ -67,6 +71,8 @@ export default function Invoices() {
     switch (status) {
       case 'paid': return <CheckCircle className="w-5 h-5 text-green-500" />
       case 'unpaid': return <Clock className="w-5 h-5 text-red-500" />
+      case 'pending': return <Clock className="w-5 h-5 text-yellow-500" />
+      case 'overdue': return <Clock className="w-5 h-5 text-red-500" />
       default: return <DollarSign className="w-5 h-5 text-gray-500" />
     }
   }
@@ -93,6 +99,12 @@ export default function Invoices() {
   const markAsPaid = async (invoiceId: string) => {
     try {
       await invoicesApi.markPaid(invoiceId)
+      
+      // Track invoice payment
+      trackInvoiceAction('mark_paid', {
+        invoice_id: invoiceId
+      })
+      
       loadData()
     } catch (error) {
       console.error('Error marking invoice as paid:', error)
@@ -103,6 +115,12 @@ export default function Invoices() {
     if (window.confirm('Are you sure you want to delete this invoice?')) {
       try {
         await invoicesApi.delete(invoiceId)
+        
+        // Track invoice deletion
+        trackInvoiceAction('delete', {
+          invoice_id: invoiceId
+        })
+        
         loadData()
       } catch (error) {
         console.error('Error deleting invoice:', error)
@@ -124,7 +142,7 @@ export default function Invoices() {
   // Calculate totals
   const totalAmount = invoices.reduce((sum, inv) => sum + inv.amount, 0)
   const paidAmount = invoices.filter(inv => inv.status === 'paid').reduce((sum, inv) => sum + inv.amount, 0)
-  const unpaidAmount = invoices.filter(inv => inv.status === 'unpaid').reduce((sum, inv) => sum + inv.amount, 0)
+  const unpaidAmount = invoices.filter(inv => inv.status === 'unpaid' || inv.status === 'pending').reduce((sum, inv) => sum + inv.amount, 0)
 
   const columns = [
     {
@@ -172,7 +190,7 @@ export default function Invoices() {
         <div className="flex items-center space-x-2">
           <Calendar className="w-4 h-4 text-gray-400" />
           <span className={
-            row.status === 'unpaid' && new Date(value) < new Date()
+            (row.status === 'unpaid' || row.status === 'pending') && new Date(value) < new Date()
               ? 'text-red-600 dark:text-red-400'
               : ''
           }>
@@ -186,7 +204,7 @@ export default function Invoices() {
       label: 'Actions',
       render: (value: any, row: any) => (
         <div className="flex items-center space-x-2">
-          {row.status === 'unpaid' && (
+          {(row.status === 'unpaid' || row.status === 'pending') && (
             <button
               onClick={() => markAsPaid(row.id)}
               className="px-3 py-1 text-sm bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/40 transition-colors duration-200"

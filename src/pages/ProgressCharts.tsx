@@ -1,22 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, BarChart3, TrendingUp, Users, DollarSign, Calendar } from 'lucide-react'
+import { ArrowLeft, BarChart3, TrendingUp, Users, DollarSign, Calendar, TrendingDown } from 'lucide-react'
 import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
+import { profilesApi } from '../lib/database'
 
 export default function ProgressCharts() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
-  const [subscriptionPlan, setSubscriptionPlan] = useState<string>('free')
-  const [isProLocal, setIsProLocal] = useState<boolean>(() => {
-    try {
-      const raw = localStorage.getItem('followuply_is_pro')
-      return raw ? JSON.parse(raw) === true : false
-    } catch {
-      return false
-    }
-  })
+  const [profile, setProfile] = useState<any>(null)
   const [chartData, setChartData] = useState<any>(null)
 
   useEffect(() => {
@@ -27,15 +20,8 @@ export default function ProgressCharts() {
 
         if (user) {
           // Get user profile to check subscription plan
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('subscription_plan')
-            .eq('id', user.id)
-            .single()
-
-          if (profile) {
-            setSubscriptionPlan(profile.subscription_plan || 'free')
-          }
+          const profileData = await profilesApi.get(user.id)
+          setProfile(profileData)
 
           // Generate mock chart data for demonstration
           // In a real app, this would come from your database
@@ -89,6 +75,7 @@ export default function ProgressCharts() {
           {title === 'Clients' && <Users className="w-5 h-5 mr-2 text-blue-500" />}
           {title === 'Revenue' && <DollarSign className="w-5 h-5 mr-2 text-green-500" />}
           {title === 'Invoices' && <Calendar className="w-5 h-5 mr-2 text-purple-500" />}
+          {title === 'Expenses' && <TrendingDown className="w-5 h-5 mr-2 text-red-500" />}
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
         </div>
 
@@ -148,7 +135,7 @@ export default function ProgressCharts() {
           </p>
         </div>
 
-        {subscriptionPlan === 'free' && !isProLocal ? (
+        {profile?.plan === 'free' ? (
           <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-8 text-center">
             <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/20 dark:to-purple-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
               <BarChart3 className="w-10 h-10 text-blue-600 dark:text-blue-400" />
@@ -161,7 +148,7 @@ export default function ProgressCharts() {
               onClick={() => navigate('/upgrade')}
               className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium hover:from-purple-700 hover:to-pink-700 transition-all duration-200"
             >
-              Upgrade to Pro
+              Upgrade to Pro - $2.99/month
             </button>
           </div>
         ) : (

@@ -576,6 +576,20 @@ export const profilesApi = {
       console.error('Error updating profile:', error)
       throw error
     }
+  },
+
+  async delete(userId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting profile:', error)
+      throw error
+    }
   }
 }
 

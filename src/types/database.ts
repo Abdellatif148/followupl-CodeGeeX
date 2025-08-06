@@ -9,7 +9,7 @@ export interface Database {
           currency: string
           timezone: string
           language: string
-          plan: 'free' | 'pro' | 'super_pro'
+          plan: 'free' | 'pro'
           created_at: string
           updated_at: string
         }
@@ -20,7 +20,7 @@ export interface Database {
           currency?: string
           timezone?: string
           language?: string
-          plan?: 'free' | 'pro' | 'super_pro'
+          plan?: 'free' | 'pro'
           created_at?: string
           updated_at?: string
         }
@@ -31,7 +31,7 @@ export interface Database {
           currency?: string
           timezone?: string
           language?: string
-          plan?: 'free' | 'pro' | 'super_pro'
+          plan?: 'free' | 'pro'
           created_at?: string
           updated_at?: string
         }

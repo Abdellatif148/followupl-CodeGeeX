@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Calendar, Clock, FileText, User, Loader2, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react'
+import { Calendar, Clock, FileText, User, Loader2, CheckCircle, AlertCircle, ArrowLeft, X } from 'lucide-react'
 import { remindersApi, clientsApi } from '../lib/database'
 import { supabase } from '../lib/supabase'
 import type { Client } from '../types/database'

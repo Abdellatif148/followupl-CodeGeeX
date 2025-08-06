@@ -3,21 +3,32 @@ import { useNavigate } from 'react-router-dom'
 import { CheckCircle, CreditCard, ArrowLeft, Loader2 } from 'lucide-react'
 import Layout from '../components/Layout'
 import { supabase } from '../lib/supabase'
+import { profilesApi } from '../lib/database'
 
 export default function Upgrade() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [user, setUser] = useState<any>(null)
+  const [profile, setProfile] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
   useEffect(() => {
-    const getUser = async () => {
+    const getUserData = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       setUser(user)
+      
+      if (user) {
+        try {
+          const profileData = await profilesApi.get(user.id)
+          setProfile(profileData)
+        } catch (error) {
+          console.error('Error fetching profile:', error)
+        }
+      }
     }
 
-    getUser()
+    getUserData()
   }, [])
 
   const handleUpgrade = async () => {
@@ -33,12 +44,10 @@ export default function Upgrade() {
 
       // Update user profile to indicate Pro subscription
       if (user) {
-        const { error } = await supabase
-          .from('profiles')
-          .update({ subscription_plan: 'pro' })
-          .eq('id', user.id)
-
-        if (error) throw error
+        await profilesApi.update(user.id, { plan: 'pro' })
+        
+        // Update local state
+        setProfile((prev: any) => prev ? { ...prev, plan: 'pro' } : null)
       }
 
       setSuccess(true)
@@ -129,7 +138,7 @@ export default function Upgrade() {
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                   <div>
                     <h3 className="text-2xl font-bold text-purple-900 dark:text-purple-300 mb-2">Pro Plan</h3>
-                    <p className="text-purple-700 dark:text-purple-400 mb-4">Billed monthly at $9.99/month</p>
+                    <p className="text-purple-700 dark:text-purple-400 mb-4">Billed monthly at $2.99/month</p>
                     <ul className="space-y-2">
                       <li className="flex items-center text-purple-800 dark:text-purple-300">
                         <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
@@ -155,7 +164,7 @@ export default function Upgrade() {
                   </div>
                   <div className="mt-6 md:mt-0 text-center">
                     <div className="text-4xl font-bold text-purple-900 dark:text-purple-300 mb-2">
-                      $9.99<span className="text-lg font-normal text-purple-700 dark:text-purple-400">/month</span>
+                      $2.99<span className="text-lg font-normal text-purple-700 dark:text-purple-400">/month</span>
                     </div>
                   </div>
                 </div>
@@ -170,7 +179,7 @@ export default function Upgrade() {
               <div className="flex justify-center">
                 <button 
                   onClick={handleUpgrade}
-                  disabled={loading}
+                  disabled={loading || profile?.plan === 'pro'}
                   className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center"
                 >
                   {loading ? (
@@ -178,8 +187,10 @@ export default function Upgrade() {
                       <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                       Processing...
                     </>
+                  ) : profile?.plan === 'pro' ? (
+                    'Already Pro Member'
                   ) : (
-                    'Upgrade Now - $9.99/month'
+                    'Upgrade Now - $2.99/month'
                   )}
                 </button>
               </div>

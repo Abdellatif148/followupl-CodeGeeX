@@ -46,10 +46,12 @@ export const clientsApi = {
       if (error) throw error
       return data || []
     } catch (error) {
-      console.error('Error fetching clients:', error)
-      throw error
-    }
-  },
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to delete account')
+            }
+      },
+  }
 
   async getById(id: string): Promise<Client> {
     try {

@@ -47,6 +47,12 @@ export const clientsApi = {
       return data || []
     } catch (error) {
       console.error('Error fetching clients:', error)
+          .eq('id', id)
+          .single()
+        
+        if (error) throw handleSupabaseError(error)
+        return data
+      })
       throw error
     }
   },
@@ -69,14 +75,16 @@ export const clientsApi = {
 
   async create(client: ClientInsert): Promise<Client> {
     try {
-      const { data, error } = await supabase
-        .from('clients')
-        .insert(client)
-        .select()
-        .single()
-      
-      if (error) throw error
-      return data
+      return await withRetry(async () => {
+        const { data, error } = await supabase
+          .from('clients')
+          .insert(client)
+          .select()
+          .single()
+        
+        if (error) throw handleSupabaseError(error)
+        return data
+      })
     } catch (error) {
       console.error('Error creating client:', error)
       throw error
@@ -85,18 +93,20 @@ export const clientsApi = {
 
   async update(id: string, updates: ClientUpdate): Promise<Client> {
     try {
-      const { data, error } = await supabase
-        .from('clients')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single()
-      
-      if (error) throw error
-      return data
+      return await withRetry(async () => {
+        const { data, error } = await supabase
+          .from('clients')
+          .update({
+            ...updates,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id)
+          .select()
+          .single()
+        
+        if (error) throw handleSupabaseError(error)
+        return data
+      })
     } catch (error) {
       console.error('Error updating client:', error)
       throw error
@@ -105,12 +115,14 @@ export const clientsApi = {
 
   async delete(id: string): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', id)
-      
-      if (error) throw error
+      await withRetry(async () => {
+        const { error } = await supabase
+          .from('clients')
+          .delete()
+          .eq('id', id)
+        
+        if (error) throw handleSupabaseError(error)
+      })
     } catch (error) {
       console.error('Error deleting client:', error)
       throw error
@@ -119,15 +131,17 @@ export const clientsApi = {
 
   async search(userId: string, query: string): Promise<Client[]> {
     try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('user_id', userId)
-        .or(`name.ilike.%${query}%,email.ilike.%${query}%,company.ilike.%${query}%,notes.ilike.%${query}%`)
-        .order('created_at', { ascending: false })
-      
-      if (error) throw error
-      return data || []
+      return await withRetry(async () => {
+        const { data, error } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('user_id', userId)
+          .or(`name.ilike.%${query}%,email.ilike.%${query}%,company.ilike.%${query}%,notes.ilike.%${query}%`)
+          .order('created_at', { ascending: false })
+        
+        if (error) throw handleSupabaseError(error)
+        return data || []
+      })
     } catch (error) {
       console.error('Error searching clients:', error)
       throw error
@@ -696,7 +710,7 @@ export const dashboardApi = {
       const totalPendingAmount = pendingInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0)
       const totalOverdueAmount = overdueInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0)
       const totalExpenses = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0)
-      const totalRevenue = invoices.filter(i => i.status === 'paid').reduce((sum, inv) => sum + (inv.amount || 0), 0)
+      const totalRevenue = invoices.filter(i => (i.status || '') === 'paid').reduce((sum, inv) => sum + (inv.amount || 0), 0)
 
       return {
         activeClients,
@@ -708,7 +722,7 @@ export const dashboardApi = {
         totalExpenses,
         totalRevenue,
         recentClients: clients.slice(0, 5),
-        upcomingReminders: reminders.slice(0, 5),
+        upcomingReminders: reminders.filter(r => ['pending', 'active'].includes(r.status || '')).slice(0, 5),
         recentInvoices: invoices.slice(0, 5),
         recentExpenses: expenses.slice(0, 5)
       }

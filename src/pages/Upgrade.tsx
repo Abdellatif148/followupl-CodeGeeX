@@ -1,203 +1,785 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { CheckCircle, CreditCard, ArrowLeft, Loader2 } from 'lucide-react'
-import Layout from '../components/Layout'
-import { supabase } from '../lib/supabase'
-import { profilesApi } from '../lib/database'
+import { supabase } from './supabase'
+import type { 
+  Client, ClientInsert, ClientUpdate,
+  Reminder, ReminderInsert, ReminderUpdate,
+  Invoice, InvoiceInsert, InvoiceUpdate,
+  Profile, ProfileInsert, ProfileUpdate,
+  Notification, NotificationInsert, NotificationUpdate,
+  Expense, ExpenseInsert, ExpenseUpdate
+} from '../types/database'
 
-export default function Upgrade() {
-  const navigate = useNavigate()
-  const [loading, setLoading] = useState(false)
-  const [user, setUser] = useState<any>(null)
-  const [profile, setProfile] = useState<any>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
+// Define types for joined data
+interface ReminderWithClient extends Reminder {
+  clients?: {
+    id: string
+    name: string
+    platform: string
+  } | null
+}
 
-  useEffect(() => {
-    const getUserData = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
-      
-      if (user) {
-        try {
-          const profileData = await profilesApi.get(user.id)
-          setProfile(profileData)
-        } catch (error) {
-          console.error('Error fetching profile:', error)
-        }
-      }
-    }
+interface InvoiceWithClient extends Invoice {
+  clients?: {
+    id: string
+    name: string
+    email: string | null
+    platform: string
+  } | null
+}
 
-    getUserData()
-  }, [])
+interface ExpenseWithClient extends Expense {
+  clients?: {
+    id: string
+    name: string
+  } | null
+}
 
-  const handleUpgrade = async () => {
-    setLoading(true)
-    setError(null)
-
+// Client operations
+export const clientsApi = {
+  async getAll(userId: string): Promise<Client[]> {
     try {
-      // In a real implementation, this would integrate with a payment processor
-      // For now, we'll simulate the upgrade process
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching clients:', error)
+      throw error
+    }
+  },
 
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000))
+  async getById(id: string): Promise<Client> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', id)
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching client:', error)
+      throw error
+    }
+  },
 
-      // Update user profile to indicate Pro subscription
-      if (user) {
-        await profilesApi.update(user.id, { plan: 'pro' })
-        
-        // Update local state
-        setProfile((prev: any) => prev ? { ...prev, plan: 'pro' } : null)
-      }
+  async create(client: ClientInsert): Promise<Client> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .insert(client)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating client:', error)
+      throw error
+    }
+  },
 
-      setSuccess(true)
-    } catch (err) {
-      console.error('Upgrade error:', err)
-      setError('Failed to process upgrade. Please try again.')
-    } finally {
-      setLoading(false)
+  async update(id: string, updates: ClientUpdate): Promise<Client> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating client:', error)
+      throw error
+    }
+  },
+
+  async delete(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting client:', error)
+      throw error
+    }
+  },
+
+  async search(userId: string, query: string): Promise<Client[]> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('user_id', userId)
+        .or(`name.ilike.%${query}%,email.ilike.%${query}%,company.ilike.%${query}%,notes.ilike.%${query}%`)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error searching clients:', error)
+      throw error
     }
   }
+}
 
-  return (
-    <Layout>
-      <div className="p-6 max-w-4xl mx-auto">
-        <button 
-          onClick={() => navigate('/settings')}
-          className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-8"
-        >
-          <ArrowLeft className="w-5 h-5 mr-2" />
-          Back to Settings
-        </button>
+// Reminder operations
+export const remindersApi = {
+  async requestBrowserNotificationPermission(): Promise<void> {
+    if (!('Notification' in window)) {
+      console.log('This browser does not support desktop notification')
+      return
+    }
 
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-8">
-          <div className="text-center mb-10">
-            <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <CreditCard className="w-10 h-10 text-purple-600 dark:text-purple-400" />
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Upgrade to Pro</h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Unlock premium features and take your business to the next level
-            </p>
-          </div>
+    if (Notification.permission === 'granted') return
 
-          {success ? (
-            <div className="text-center py-10">
-              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
-              </div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Upgrade Successful!</h2>
-              <p className="text-gray-600 dark:text-gray-400 mb-8">
-                Thank you for upgrading to Pro! You now have access to all premium features.
-              </p>
-              <button 
-                onClick={() => navigate('/dashboard')}
-                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium hover:from-purple-700 hover:to-pink-700 transition-all duration-200"
-              >
-                Go to Dashboard
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                {/* Feature 1 */}
-                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
-                  <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center mb-4">
-                    <CheckCircle className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Unlimited Clients</h3>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Add as many clients as you need without any limitations
-                  </p>
-                </div>
+    try {
+      await Notification.requestPermission()
+    } catch (error) {
+      console.error('Error requesting notification permission:', error)
+    }
+  },
 
-                {/* Feature 2 */}
-                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
-                  <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center mb-4">
-                    <CheckCircle className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Progress Charts</h3>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Visualize your business growth with interactive charts and graphs
-                  </p>
-                </div>
+  async showBrowserNotification(reminder: Reminder): Promise<void> {
+    if (Notification.permission !== 'granted') return
 
-                {/* Feature 3 */}
-                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6">
-                  <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center mb-4">
-                    <CheckCircle className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Priority Support</h3>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    Get help faster with our priority customer support
-                  </p>
-                </div>
-              </div>
+    new Notification('FollowUply', {
+      body: `⏰ ${reminder.title} is due soon!`,
+      icon: '/followuplyImage-removebg-preview.png',
+      data: {
+        reminderId: reminder.id,
+        type: 'reminder'
+      }
+    })
+  },
 
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 rounded-2xl p-8 mb-8">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <h3 className="text-2xl font-bold text-purple-900 dark:text-purple-300 mb-2">Pro Plan</h3>
-                    <p className="text-purple-700 dark:text-purple-400 mb-4">Billed monthly at $2.99/month</p>
-                    <ul className="space-y-2">
-                      <li className="flex items-center text-purple-800 dark:text-purple-300">
-                        <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                        Unlimited clients
-                      </li>
-                      <li className="flex items-center text-purple-800 dark:text-purple-300">
-                        <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                        Advanced reminders
-                      </li>
-                      <li className="flex items-center text-purple-800 dark:text-purple-300">
-                        <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                        Custom invoices
-                      </li>
-                      <li className="flex items-center text-purple-800 dark:text-purple-300">
-                        <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                        Progress chart graphs
-                      </li>
-                      <li className="flex items-center text-purple-800 dark:text-purple-300">
-                        <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                        Priority support
-                      </li>
-                    </ul>
-                  </div>
-                  <div className="mt-6 md:mt-0 text-center">
-                    <div className="text-4xl font-bold text-purple-900 dark:text-purple-300 mb-2">
-                      $2.99<span className="text-lg font-normal text-purple-700 dark:text-purple-400">/month</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+  async getAll(userId: string): Promise<ReminderWithClient[]> {
+    try {
+      const { data, error } = await supabase
+        .from('reminders')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            platform
+          )
+        `)
+        .eq('user_id', userId)
+        .order('due_date', { ascending: true })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching reminders:', error)
+      throw error
+    }
+  },
 
-              {error && (
-                <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
-                  <p className="text-red-700 dark:text-red-300">{error}</p>
-                </div>
-              )}
+  async getUpcoming(userId: string, days: number = 7): Promise<ReminderWithClient[]> {
+    try {
+      const futureDate = new Date()
+      futureDate.setDate(futureDate.getDate() + days)
+      
+      const { data, error } = await supabase
+        .from('reminders')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            platform
+          )
+        `)
+        .eq('user_id', userId)
+        .in('status', ['pending', 'active'])
+        .lte('due_date', futureDate.toISOString())
+        .order('due_date', { ascending: true })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching upcoming reminders:', error)
+      throw error
+    }
+  },
 
-              <div className="flex justify-center">
-                <button 
-                  onClick={handleUpgrade}
-                  disabled={loading || profile?.plan === 'pro'}
-                  className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : profile?.plan === 'pro' ? (
-                    'Already Pro Member'
-                  ) : (
-                    'Upgrade Now - $2.99/month'
-                  )}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </Layout>
-  )
+  async create(reminder: ReminderInsert): Promise<Reminder> {
+    try {
+      const { data, error } = await supabase
+        .from('reminders')
+        .insert(reminder)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating reminder:', error)
+      throw error
+    }
+  },
+
+  async update(id: string, updates: ReminderUpdate): Promise<Reminder> {
+    try {
+      const { data, error } = await supabase
+        .from('reminders')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating reminder:', error)
+      throw error
+    }
+  },
+
+  async delete(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('reminders')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting reminder:', error)
+      throw error
+    }
+  },
+
+  async markCompleted(id: string): Promise<Reminder> {
+    try {
+      const { data, error } = await supabase
+        .from('reminders')
+        .update({ 
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error marking reminder as completed:', error)
+      throw error
+    }
+  }
+}
+
+// Invoice operations
+export const invoicesApi = {
+  async getAll(userId: string): Promise<InvoiceWithClient[]> {
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            email,
+            platform
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching invoices:', error)
+      throw error
+    }
+  },
+
+  async getOverdue(userId: string): Promise<InvoiceWithClient[]> {
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      
+      const { data, error } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            email,
+            platform
+          )
+        `)
+        .eq('user_id', userId)
+        .in('status', ['unpaid', 'pending'])
+        .lt('due_date', today)
+        .order('due_date', { ascending: true })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching overdue invoices:', error)
+      throw error
+    }
+  },
+
+  async create(invoice: InvoiceInsert): Promise<Invoice> {
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .insert(invoice)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating invoice:', error)
+      throw error
+    }
+  },
+
+  async update(id: string, updates: InvoiceUpdate): Promise<Invoice> {
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating invoice:', error)
+      throw error
+    }
+  },
+
+  async delete(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('invoices')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting invoice:', error)
+      throw error
+    }
+  },
+
+  async markPaid(id: string, paymentMethod?: string): Promise<Invoice> {
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .update({ 
+          status: 'paid',
+          payment_date: new Date().toISOString(),
+          payment_method: paymentMethod,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error marking invoice as paid:', error)
+      throw error
+    }
+  }
+}
+
+// Expense operations
+export const expensesApi = {
+  async getAll(userId: string): Promise<ExpenseWithClient[]> {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select(`
+          *,
+          clients (
+            id,
+            name
+          )
+        `)
+        .eq('user_id', userId)
+        .order('expense_date', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching expenses:', error)
+      throw error
+    }
+  },
+
+  async create(expense: ExpenseInsert): Promise<Expense> {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert(expense)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating expense:', error)
+      throw error
+    }
+  },
+
+  async update(id: string, updates: ExpenseUpdate): Promise<Expense> {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating expense:', error)
+      throw error
+    }
+  },
+
+  async delete(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting expense:', error)
+      throw error
+    }
+  },
+
+  async getByCategory(userId: string, category: string): Promise<Expense[]> {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('category', category)
+        .order('expense_date', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching expenses by category:', error)
+      throw error
+    }
+  },
+
+  async getTaxDeductible(userId: string): Promise<Expense[]> {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('tax_deductible', true)
+        .order('expense_date', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching tax deductible expenses:', error)
+      throw error
+    }
+  }
+}
+
+// Profile operations
+export const profilesApi = {
+  async get(userId: string): Promise<Profile | null> {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+      throw error
+    }
+  },
+
+  async create(profile: ProfileInsert): Promise<Profile> {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert(profile)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating profile:', error)
+      throw error
+    }
+  },
+
+  async update(userId: string, updates: ProfileUpdate): Promise<Profile> {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      throw error
+    }
+  },
+
+  async delete(userId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting profile:', error)
+      throw error
+    }
+  }
+}
+
+// Notification operations
+export const notificationsApi = {
+  async getAll(userId: string): Promise<Notification[]> {
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching notifications:', error)
+      throw error
+    }
+  },
+
+  async getUnread(userId: string): Promise<Notification[]> {
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_read', false)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching unread notifications:', error)
+      throw error
+    }
+  },
+
+  async markAsRead(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error marking notification as read:', error)
+      throw error
+    }
+  },
+
+  async markAllAsRead(userId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', userId)
+        .eq('is_read', false)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error)
+      throw error
+    }
+  },
+
+  async create(notification: NotificationInsert): Promise<Notification> {
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert(notification)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating notification:', error)
+      throw error
+    }
+  }
+}
+
+// Dashboard stats
+export const dashboardApi = {
+  async getStats(userId: string) {
+    try {
+      const [clients, reminders, invoices, expenses] = await Promise.all([
+        clientsApi.getAll(userId),
+        remindersApi.getUpcoming(userId),
+        invoicesApi.getAll(userId),
+        expensesApi.getAll(userId)
+      ])
+
+      const activeClients = clients.filter(c => c.status === 'active').length
+      const pendingReminders = reminders.filter(r => ['pending', 'active'].includes(r.status)).length
+      const pendingInvoices = invoices.filter(i => ['unpaid', 'pending'].includes(i.status))
+      const overdueInvoices = invoices.filter(i => {
+        const today = new Date().toISOString().split('T')[0]
+        return ['unpaid', 'pending'].includes(i.status) && i.due_date < today
+      })
+
+      const totalPendingAmount = pendingInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0)
+      const totalOverdueAmount = overdueInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0)
+      const totalExpenses = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0)
+      const totalRevenue = invoices.filter(i => (i.status || '') === 'paid').reduce((sum, inv) => sum + (inv.amount || 0), 0)
+
+      return {
+        activeClients,
+        pendingReminders,
+        pendingInvoicesCount: pendingInvoices.length,
+        overdueInvoicesCount: overdueInvoices.length,
+        totalPendingAmount,
+        totalOverdueAmount,
+        totalExpenses,
+        totalRevenue,
+        recentClients: clients.slice(0, 5),
+        upcomingReminders: reminders.filter(r => ['pending', 'active'].includes(r.status || '')).slice(0, 5),
+        recentInvoices: invoices.slice(0, 5),
+        recentExpenses: expenses.slice(0, 5)
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error)
+      throw error
+    }
+  }
+}
+
+// Currency utilities
+export const currencyUtils = {
+  // Get user's preferred currency from profile
+  async getUserCurrency(userId: string): Promise<string> {
+    try {
+      const profile = await profilesApi.get(userId)
+      return profile?.currency || 'USD'
+    } catch (error) {
+      console.error('Error getting user currency:', error)
+      return 'USD'
+    }
+  },
+
+  // Format currency based on user preference
+  formatCurrency(amount: number, currency: string = 'USD'): string {
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(amount)
+    } catch (error) {
+      // Fallback to USD if currency is invalid
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(amount)
+    }
+  },
+
+  // Get currency symbol
+  getCurrencySymbol(currency: string = 'USD'): string {
+    const symbols: { [key: string]: string } = {
+      'USD': '$',
+      'EUR': '€',
+      'GBP': '£',
+      'CAD': 'C$',
+      'AUD': 'A$',
+      'JPY': '¥',
+      'CHF': 'CHF',
+      'CNY': '¥',
+      'INR': '₹'
+    }
+    return symbols[currency] || '$'
+  },
+
+  // Available currencies
+  getAvailableCurrencies() {
+    return [
+      { code: 'USD', name: 'US Dollar', symbol: '$' },
+      { code: 'EUR', name: 'Euro', symbol: '€' },
+      { code: 'GBP', name: 'British Pound', symbol: '£' },
+      { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
+      { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
+      { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
+      { code: 'CHF', name: 'Swiss Franc', symbol: 'CHF' },
+      { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
+      { code: 'INR', name: 'Indian Rupee', symbol: '₹' }
+    ]
+  }
 }

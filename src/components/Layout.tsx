@@ -1,260 +1,785 @@
-import React, { useState, useEffect } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
-import { 
-  Home, Users, Bell, FileText, Settings, LogOut, Menu, X,
-  User, Search, Plus, TrendingDown
-} from 'lucide-react'
-import { supabase } from '../lib/supabase'
-import DarkModeToggle from './DarkModeToggle'
-import NotificationCenter from './NotificationCenter'
-import GlobalSearch from './GlobalSearch'
-import { notificationsApi, profilesApi } from '../lib/database'
-import { useAnalytics, useAuthAnalytics } from '../hooks/useAnalytics'
+import { supabase } from './supabase'
+import type { 
+  Client, ClientInsert, ClientUpdate,
+  Reminder, ReminderInsert, ReminderUpdate,
+  Invoice, InvoiceInsert, InvoiceUpdate,
+  Profile, ProfileInsert, ProfileUpdate,
+  Notification, NotificationInsert, NotificationUpdate,
+  Expense, ExpenseInsert, ExpenseUpdate
+} from '../types/database'
 
-interface LayoutProps {
-  children: React.ReactNode
+// Define types for joined data
+interface ReminderWithClient extends Reminder {
+  clients?: {
+    id: string
+    name: string
+    platform: string
+  } | null
 }
 
-export default function Layout({ children }: LayoutProps) {
-  const { t } = useTranslation()
-  const analytics = useAnalytics()
-  const { trackLogout } = useAuthAnalytics()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [user, setUser] = useState<any>(null)
-  const [profile, setProfile] = useState<any>(null)
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [showNotifications, setShowNotifications] = useState(false)
-  const [showSearch, setShowSearch] = useState(false)
-  const location = useLocation()
-  const navigate = useNavigate()
+interface InvoiceWithClient extends Invoice {
+  clients?: {
+    id: string
+    name: string
+    email: string | null
+    platform: string
+  } | null
+}
 
-  const navigation = [
-    { name: t('navigation.dashboard'), href: '/dashboard', icon: Home },
-    { name: t('navigation.clients'), href: '/clients', icon: Users },
-    { name: t('navigation.reminders'), href: '/reminders', icon: Bell },
-    { name: t('navigation.invoices'), href: '/invoices', icon: FileText },
-    { name: t('navigation.expenses'), href: '/expenses', icon: TrendingDown },
-    { name: t('navigation.settings'), href: '/settings', icon: Settings },
-  ]
+interface ExpenseWithClient extends Expense {
+  clients?: {
+    id: string
+    name: string
+  } | null
+}
 
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
+// Client operations
+export const clientsApi = {
+  async getAll(userId: string): Promise<Client[]> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
       
-      if (user) {
-        // Get user profile
-        try {
-          const profileData = await profilesApi.get(user.id)
-          setProfile(profileData)
-        } catch (error) {
-          console.error('Error fetching profile:', error)
-        }
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching clients:', error)
+      throw error
+    }
+  },
 
-        // Get unread notifications count
-        try {
-          const notifications = await notificationsApi.getUnread(user.id)
-          setUnreadCount(notifications.length)
-        } catch (error) {
-          console.error('Error fetching notifications:', error)
-        }
-      }
+  async getById(id: string): Promise<Client> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', id)
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching client:', error)
+      throw error
+    }
+  },
+
+  async create(client: ClientInsert): Promise<Client> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .insert(client)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating client:', error)
+      throw error
+    }
+  },
+
+  async update(id: string, updates: ClientUpdate): Promise<Client> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating client:', error)
+      throw error
+    }
+  },
+
+  async delete(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting client:', error)
+      throw error
+    }
+  },
+
+  async search(userId: string, query: string): Promise<Client[]> {
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('user_id', userId)
+        .or(`name.ilike.%${query}%,email.ilike.%${query}%,company.ilike.%${query}%,notes.ilike.%${query}%`)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error searching clients:', error)
+      throw error
+    }
+  }
+}
+
+// Reminder operations
+export const remindersApi = {
+  async requestBrowserNotificationPermission(): Promise<void> {
+    if (!('Notification' in window)) {
+      console.log('This browser does not support desktop notification')
+      return
     }
 
-    getUser()
-  }, [])
+    if (Notification.permission === 'granted') return
 
-  const handleSignOut = async () => {
-    // Track logout event
-    trackLogout()
-    
-    await supabase.auth.signOut()
-    // Clear language selection flag
-    localStorage.removeItem('followuply-language-selected')
-    navigate('/login')
+    try {
+      await Notification.requestPermission()
+    } catch (error) {
+      console.error('Error requesting notification permission:', error)
+    }
+  },
+
+  async showBrowserNotification(reminder: Reminder): Promise<void> {
+    if (Notification.permission !== 'granted') return
+
+    new Notification('FollowUply', {
+      body: `⏰ ${reminder.title} is due soon!`,
+      icon: '/followuplyImage-removebg-preview.png',
+      data: {
+        reminderId: reminder.id,
+        type: 'reminder'
+      }
+    })
+  },
+
+  async getAll(userId: string): Promise<ReminderWithClient[]> {
+    try {
+      const { data, error } = await supabase
+        .from('reminders')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            platform
+          )
+        `)
+        .eq('user_id', userId)
+        .order('due_date', { ascending: true })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching reminders:', error)
+      throw error
+    }
+  },
+
+  async getUpcoming(userId: string, days: number = 7): Promise<ReminderWithClient[]> {
+    try {
+      const futureDate = new Date()
+      futureDate.setDate(futureDate.getDate() + days)
+      
+      const { data, error } = await supabase
+        .from('reminders')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            platform
+          )
+        `)
+        .eq('user_id', userId)
+        .in('status', ['pending', 'active'])
+        .lte('due_date', futureDate.toISOString())
+        .order('due_date', { ascending: true })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching upcoming reminders:', error)
+      throw error
+    }
+  },
+
+  async create(reminder: ReminderInsert): Promise<Reminder> {
+    try {
+      const { data, error } = await supabase
+        .from('reminders')
+        .insert(reminder)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating reminder:', error)
+      throw error
+    }
+  },
+
+  async update(id: string, updates: ReminderUpdate): Promise<Reminder> {
+    try {
+      const { data, error } = await supabase
+        .from('reminders')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating reminder:', error)
+      throw error
+    }
+  },
+
+  async delete(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('reminders')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting reminder:', error)
+      throw error
+    }
+  },
+
+  async markCompleted(id: string): Promise<Reminder> {
+    try {
+      const { data, error } = await supabase
+        .from('reminders')
+        .update({ 
+          status: 'completed',
+          completed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error marking reminder as completed:', error)
+      throw error
+    }
   }
+}
 
-  const isCurrentPage = (href: string) => {
-    return location.pathname === href
+// Invoice operations
+export const invoicesApi = {
+  async getAll(userId: string): Promise<InvoiceWithClient[]> {
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            email,
+            platform
+          )
+        `)
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching invoices:', error)
+      throw error
+    }
+  },
+
+  async getOverdue(userId: string): Promise<InvoiceWithClient[]> {
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      
+      const { data, error } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          clients (
+            id,
+            name,
+            email,
+            platform
+          )
+        `)
+        .eq('user_id', userId)
+        .in('status', ['unpaid', 'pending'])
+        .lt('due_date', today)
+        .order('due_date', { ascending: true })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching overdue invoices:', error)
+      throw error
+    }
+  },
+
+  async create(invoice: InvoiceInsert): Promise<Invoice> {
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .insert(invoice)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating invoice:', error)
+      throw error
+    }
+  },
+
+  async update(id: string, updates: InvoiceUpdate): Promise<Invoice> {
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating invoice:', error)
+      throw error
+    }
+  },
+
+  async delete(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('invoices')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting invoice:', error)
+      throw error
+    }
+  },
+
+  async markPaid(id: string, paymentMethod?: string): Promise<Invoice> {
+    try {
+      const { data, error } = await supabase
+        .from('invoices')
+        .update({ 
+          status: 'paid',
+          payment_date: new Date().toISOString(),
+          payment_method: paymentMethod,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error marking invoice as paid:', error)
+      throw error
+    }
   }
+}
 
-  const avatarUrl = profile?.avatar_url
+// Expense operations
+export const expensesApi = {
+  async getAll(userId: string): Promise<ExpenseWithClient[]> {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select(`
+          *,
+          clients (
+            id,
+            name
+          )
+        `)
+        .eq('user_id', userId)
+        .order('expense_date', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching expenses:', error)
+      throw error
+    }
+  },
 
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
-      {/* Mobile sidebar */}
-      <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
-        <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white dark:bg-gray-800 shadow-xl">
-          <div className="flex h-16 items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              FollowUply
-            </div>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-          <nav className="flex-1 px-4 py-4 space-y-2">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                onClick={() => {
-                  setSidebarOpen(false)
-                  analytics.trackClick(`nav_${item.name.toLowerCase()}`, 'navigation')
-                }}
-                className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                  isCurrentPage(item.href)
-                    ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-              >
-                <item.icon className="w-5 h-5 mr-3" />
-                {item.name}
-                {item.href === '/reminders' && unreadCount > 0 && (
-                  <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-2 py-1">
-                    {unreadCount}
-                  </span>
-                )}
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </div>
+  async create(expense: ExpenseInsert): Promise<Expense> {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert(expense)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating expense:', error)
+      throw error
+    }
+  },
 
-      {/* Desktop sidebar */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex flex-col flex-grow bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-sm">
-          <div className="flex h-16 items-center px-4 border-b border-gray-200 dark:border-gray-700">
-            <Link to="/dashboard" className="flex items-center space-x-2">
-              <img 
-                src="/followuplyImage-removebg-preview.png" 
-                alt="FollowUply Logo" 
-                className="w-12 h-12"
-              />
-              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                FollowUply
-              </span>
-            </Link>
-          </div>
-          <nav className="flex-1 px-4 py-4 space-y-2">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                to={item.href}
-                onClick={() => analytics.trackClick(`nav_${item.name.toLowerCase()}`, 'navigation')}
-                className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                  isCurrentPage(item.href)
-                    ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                }`}
-              >
-                <item.icon className="w-5 h-5 mr-3" />
-                {item.name}
-                {item.href === '/reminders' && unreadCount > 0 && (
-                  <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-2 py-1">
-                    {unreadCount}
-                  </span>
-                )}
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </div>
+  async update(id: string, updates: ExpenseUpdate): Promise<Expense> {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating expense:', error)
+      throw error
+    }
+  },
 
-      {/* Main content */}
-      <div className="lg:pl-64">
-        {/* Top navigation */}
-        <div className="sticky top-0 z-40 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-          <div className="flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-              >
-                <Menu className="w-6 h-6" />
-              </button>
-              <div className="hidden sm:block ml-4 lg:ml-0">
-                <button
-                  onClick={() => setShowSearch(true)}
-                  className="flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-200 w-64"
-                >
-                  <Search className="w-5 h-5" />
-                  <span>Search clients, invoices, reminders...</span>
-                </button>
-              </div>
-            </div>
+  async delete(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting expense:', error)
+      throw error
+    }
+  },
 
-            <div className="flex items-center space-x-4">
-              <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200">
-                <Plus className="w-5 h-5" />
-              </button>
-              
-              {/* Notification Bell */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200 relative"
-                  aria-label={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ''}`}
-                >
-                  <Bell className="w-5 h-5" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
-                </button>
-              </div>
+  async getByCategory(userId: string, category: string): Promise<Expense[]> {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('category', category)
+        .order('expense_date', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching expenses by category:', error)
+      throw error
+    }
+  },
 
-              <DarkModeToggle />
-              
-              {/* Profile Avatar */}
-              <Link to="/settings" className="flex items-center hover:opacity-80 transition-opacity duration-200">
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt="Profile"
-                    className="w-8 h-8 rounded-full object-cover cursor-pointer"
-                  />
-                ) : (
-                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center cursor-pointer">
-                    <User className="w-5 h-5 text-white" />
-                  </div>
-                )}
-              </Link>
-              
-              <button
-                onClick={handleSignOut}
-                className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-200"
-                aria-label="Sign out of your account"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
+  async getTaxDeductible(userId: string): Promise<Expense[]> {
+    try {
+      const { data, error } = await supabase
+        .from('expenses')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('tax_deductible', true)
+        .order('expense_date', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching tax deductible expenses:', error)
+      throw error
+    }
+  }
+}
 
-        {/* Page content */}
-        <main className="flex-1">
-          {children}
-        </main>
-      </div>
+// Profile operations
+export const profilesApi = {
+  async get(userId: string): Promise<Profile | null> {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error fetching profile:', error)
+      throw error
+    }
+  },
 
-      {/* Notification Center */}
-      <GlobalSearch
-        isOpen={showSearch}
-        onClose={() => setShowSearch(false)}
-      />
-      <NotificationCenter
-        isOpen={showNotifications}
-        onClose={() => setShowNotifications(false)}
-        unreadCount={unreadCount}
-        onUnreadCountChange={setUnreadCount}
-      />
-    </div>
-  )
+  async create(profile: ProfileInsert): Promise<Profile> {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert(profile)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating profile:', error)
+      throw error
+    }
+  },
+
+  async update(userId: string, updates: ProfileUpdate): Promise<Profile> {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      throw error
+    }
+  },
+
+  async delete(userId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error deleting profile:', error)
+      throw error
+    }
+  }
+}
+
+// Notification operations
+export const notificationsApi = {
+  async getAll(userId: string): Promise<Notification[]> {
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching notifications:', error)
+      throw error
+    }
+  },
+
+  async getUnread(userId: string): Promise<Notification[]> {
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_read', false)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching unread notifications:', error)
+      throw error
+    }
+  },
+
+  async markAsRead(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('id', id)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error marking notification as read:', error)
+      throw error
+    }
+  },
+
+  async markAllAsRead(userId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', userId)
+        .eq('is_read', false)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error)
+      throw error
+    }
+  },
+
+  async create(notification: NotificationInsert): Promise<Notification> {
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .insert(notification)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Error creating notification:', error)
+      throw error
+    }
+  }
+}
+
+// Dashboard stats
+export const dashboardApi = {
+  async getStats(userId: string) {
+    try {
+      const [clients, reminders, invoices, expenses] = await Promise.all([
+        clientsApi.getAll(userId),
+        remindersApi.getUpcoming(userId),
+        invoicesApi.getAll(userId),
+        expensesApi.getAll(userId)
+      ])
+
+      const activeClients = clients.filter(c => c.status === 'active').length
+      const pendingReminders = reminders.filter(r => ['pending', 'active'].includes(r.status)).length
+      const pendingInvoices = invoices.filter(i => ['unpaid', 'pending'].includes(i.status))
+      const overdueInvoices = invoices.filter(i => {
+        const today = new Date().toISOString().split('T')[0]
+        return ['unpaid', 'pending'].includes(i.status) && i.due_date < today
+      })
+
+      const totalPendingAmount = pendingInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0)
+      const totalOverdueAmount = overdueInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0)
+      const totalExpenses = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0)
+      const totalRevenue = invoices.filter(i => (i.status || '') === 'paid').reduce((sum, inv) => sum + (inv.amount || 0), 0)
+
+      return {
+        activeClients,
+        pendingReminders,
+        pendingInvoicesCount: pendingInvoices.length,
+        overdueInvoicesCount: overdueInvoices.length,
+        totalPendingAmount,
+        totalOverdueAmount,
+        totalExpenses,
+        totalRevenue,
+        recentClients: clients.slice(0, 5),
+        upcomingReminders: reminders.filter(r => ['pending', 'active'].includes(r.status || '')).slice(0, 5),
+        recentInvoices: invoices.slice(0, 5),
+        recentExpenses: expenses.slice(0, 5)
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error)
+      throw error
+    }
+  }
+}
+
+// Currency utilities
+export const currencyUtils = {
+  // Get user's preferred currency from profile
+  async getUserCurrency(userId: string): Promise<string> {
+    try {
+      const profile = await profilesApi.get(userId)
+      return profile?.currency || 'USD'
+    } catch (error) {
+      console.error('Error getting user currency:', error)
+      return 'USD'
+    }
+  },
+
+  // Format currency based on user preference
+  formatCurrency(amount: number, currency: string = 'USD'): string {
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(amount)
+    } catch (error) {
+      // Fallback to USD if currency is invalid
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(amount)
+    }
+  },
+
+  // Get currency symbol
+  getCurrencySymbol(currency: string = 'USD'): string {
+    const symbols: { [key: string]: string } = {
+      'USD': '$',
+      'EUR': '€',
+      'GBP': '£',
+      'CAD': 'C$',
+      'AUD': 'A$',
+      'JPY': '¥',
+      'CHF': 'CHF',
+      'CNY': '¥',
+      'INR': '₹'
+    }
+    return symbols[currency] || '$'
+  },
+
+  // Available currencies
+  getAvailableCurrencies() {
+    return [
+      { code: 'USD', name: 'US Dollar', symbol: '$' },
+      { code: 'EUR', name: 'Euro', symbol: '€' },
+      { code: 'GBP', name: 'British Pound', symbol: '£' },
+      { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
+      { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
+      { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
+      { code: 'CHF', name: 'Swiss Franc', symbol: 'CHF' },
+      { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
+      { code: 'INR', name: 'Indian Rupee', symbol: '₹' }
+    ]
+  }
 }

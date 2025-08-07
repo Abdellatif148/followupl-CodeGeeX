@@ -1,785 +1,260 @@
-import { supabase } from './supabase'
-import type { 
-  Client, ClientInsert, ClientUpdate,
-  Reminder, ReminderInsert, ReminderUpdate,
-  Invoice, InvoiceInsert, InvoiceUpdate,
-  Profile, ProfileInsert, ProfileUpdate,
-  Notification, NotificationInsert, NotificationUpdate,
-  Expense, ExpenseInsert, ExpenseUpdate
-} from '../types/database'
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ArrowLeft, Crown, Check, Star, Zap, Shield, BarChart3, Headphones } from 'lucide-react'
+import Layout from '../components/Layout'
+import { useAuth } from '../hooks/useAuth'
+import { PRICING } from '../lib/constants'
 
-// Define types for joined data
-interface ReminderWithClient extends Reminder {
-  clients?: {
-    id: string
-    name: string
-    platform: string
-  } | null
-}
+export default function Upgrade() {
+  const navigate = useNavigate()
+  const { profile } = useAuth()
+  const [isLoading, setIsLoading] = useState(false)
 
-interface InvoiceWithClient extends Invoice {
-  clients?: {
-    id: string
-    name: string
-    email: string | null
-    platform: string
-  } | null
-}
-
-interface ExpenseWithClient extends Expense {
-  clients?: {
-    id: string
-    name: string
-  } | null
-}
-
-// Client operations
-export const clientsApi = {
-  async getAll(userId: string): Promise<Client[]> {
-    try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-      
-      if (error) throw error
-      return data || []
-    } catch (error) {
-      console.error('Error fetching clients:', error)
-      throw error
-    }
-  },
-
-  async getById(id: string): Promise<Client> {
-    try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('id', id)
-        .single()
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error fetching client:', error)
-      throw error
-    }
-  },
-
-  async create(client: ClientInsert): Promise<Client> {
-    try {
-      const { data, error } = await supabase
-        .from('clients')
-        .insert(client)
-        .select()
-        .single()
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error creating client:', error)
-      throw error
-    }
-  },
-
-  async update(id: string, updates: ClientUpdate): Promise<Client> {
-    try {
-      const { data, error } = await supabase
-        .from('clients')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single()
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error updating client:', error)
-      throw error
-    }
-  },
-
-  async delete(id: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('clients')
-        .delete()
-        .eq('id', id)
-      
-      if (error) throw error
-    } catch (error) {
-      console.error('Error deleting client:', error)
-      throw error
-    }
-  },
-
-  async search(userId: string, query: string): Promise<Client[]> {
-    try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .eq('user_id', userId)
-        .or(`name.ilike.%${query}%,email.ilike.%${query}%,company.ilike.%${query}%,notes.ilike.%${query}%`)
-        .order('created_at', { ascending: false })
-      
-      if (error) throw error
-      return data || []
-    } catch (error) {
-      console.error('Error searching clients:', error)
-      throw error
-    }
-  }
-}
-
-// Reminder operations
-export const remindersApi = {
-  async requestBrowserNotificationPermission(): Promise<void> {
-    if (!('Notification' in window)) {
-      console.log('This browser does not support desktop notification')
-      return
-    }
-
-    if (Notification.permission === 'granted') return
-
-    try {
-      await Notification.requestPermission()
-    } catch (error) {
-      console.error('Error requesting notification permission:', error)
-    }
-  },
-
-  async showBrowserNotification(reminder: Reminder): Promise<void> {
-    if (Notification.permission !== 'granted') return
-
-    new Notification('FollowUply', {
-      body: `⏰ ${reminder.title} is due soon!`,
-      icon: '/followuplyImage-removebg-preview.png',
-      data: {
-        reminderId: reminder.id,
-        type: 'reminder'
-      }
-    })
-  },
-
-  async getAll(userId: string): Promise<ReminderWithClient[]> {
-    try {
-      const { data, error } = await supabase
-        .from('reminders')
-        .select(`
-          *,
-          clients (
-            id,
-            name,
-            platform
-          )
-        `)
-        .eq('user_id', userId)
-        .order('due_date', { ascending: true })
-      
-      if (error) throw error
-      return data || []
-    } catch (error) {
-      console.error('Error fetching reminders:', error)
-      throw error
-    }
-  },
-
-  async getUpcoming(userId: string, days: number = 7): Promise<ReminderWithClient[]> {
-    try {
-      const futureDate = new Date()
-      futureDate.setDate(futureDate.getDate() + days)
-      
-      const { data, error } = await supabase
-        .from('reminders')
-        .select(`
-          *,
-          clients (
-            id,
-            name,
-            platform
-          )
-        `)
-        .eq('user_id', userId)
-        .in('status', ['pending', 'active'])
-        .lte('due_date', futureDate.toISOString())
-        .order('due_date', { ascending: true })
-      
-      if (error) throw error
-      return data || []
-    } catch (error) {
-      console.error('Error fetching upcoming reminders:', error)
-      throw error
-    }
-  },
-
-  async create(reminder: ReminderInsert): Promise<Reminder> {
-    try {
-      const { data, error } = await supabase
-        .from('reminders')
-        .insert(reminder)
-        .select()
-        .single()
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error creating reminder:', error)
-      throw error
-    }
-  },
-
-  async update(id: string, updates: ReminderUpdate): Promise<Reminder> {
-    try {
-      const { data, error } = await supabase
-        .from('reminders')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single()
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error updating reminder:', error)
-      throw error
-    }
-  },
-
-  async delete(id: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('reminders')
-        .delete()
-        .eq('id', id)
-      
-      if (error) throw error
-    } catch (error) {
-      console.error('Error deleting reminder:', error)
-      throw error
-    }
-  },
-
-  async markCompleted(id: string): Promise<Reminder> {
-    try {
-      const { data, error } = await supabase
-        .from('reminders')
-        .update({ 
-          status: 'completed',
-          completed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single()
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error marking reminder as completed:', error)
-      throw error
-    }
-  }
-}
-
-// Invoice operations
-export const invoicesApi = {
-  async getAll(userId: string): Promise<InvoiceWithClient[]> {
-    try {
-      const { data, error } = await supabase
-        .from('invoices')
-        .select(`
-          *,
-          clients (
-            id,
-            name,
-            email,
-            platform
-          )
-        `)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-      
-      if (error) throw error
-      return data || []
-    } catch (error) {
-      console.error('Error fetching invoices:', error)
-      throw error
-    }
-  },
-
-  async getOverdue(userId: string): Promise<InvoiceWithClient[]> {
-    try {
-      const today = new Date().toISOString().split('T')[0]
-      
-      const { data, error } = await supabase
-        .from('invoices')
-        .select(`
-          *,
-          clients (
-            id,
-            name,
-            email,
-            platform
-          )
-        `)
-        .eq('user_id', userId)
-        .in('status', ['unpaid', 'pending'])
-        .lt('due_date', today)
-        .order('due_date', { ascending: true })
-      
-      if (error) throw error
-      return data || []
-    } catch (error) {
-      console.error('Error fetching overdue invoices:', error)
-      throw error
-    }
-  },
-
-  async create(invoice: InvoiceInsert): Promise<Invoice> {
-    try {
-      const { data, error } = await supabase
-        .from('invoices')
-        .insert(invoice)
-        .select()
-        .single()
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error creating invoice:', error)
-      throw error
-    }
-  },
-
-  async update(id: string, updates: InvoiceUpdate): Promise<Invoice> {
-    try {
-      const { data, error } = await supabase
-        .from('invoices')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single()
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error updating invoice:', error)
-      throw error
-    }
-  },
-
-  async delete(id: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('invoices')
-        .delete()
-        .eq('id', id)
-      
-      if (error) throw error
-    } catch (error) {
-      console.error('Error deleting invoice:', error)
-      throw error
-    }
-  },
-
-  async markPaid(id: string, paymentMethod?: string): Promise<Invoice> {
-    try {
-      const { data, error } = await supabase
-        .from('invoices')
-        .update({ 
-          status: 'paid',
-          payment_date: new Date().toISOString(),
-          payment_method: paymentMethod,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single()
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error marking invoice as paid:', error)
-      throw error
-    }
-  }
-}
-
-// Expense operations
-export const expensesApi = {
-  async getAll(userId: string): Promise<ExpenseWithClient[]> {
-    try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .select(`
-          *,
-          clients (
-            id,
-            name
-          )
-        `)
-        .eq('user_id', userId)
-        .order('expense_date', { ascending: false })
-      
-      if (error) throw error
-      return data || []
-    } catch (error) {
-      console.error('Error fetching expenses:', error)
-      throw error
-    }
-  },
-
-  async create(expense: ExpenseInsert): Promise<Expense> {
-    try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .insert(expense)
-        .select()
-        .single()
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error creating expense:', error)
-      throw error
-    }
-  },
-
-  async update(id: string, updates: ExpenseUpdate): Promise<Expense> {
-    try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single()
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error updating expense:', error)
-      throw error
-    }
-  },
-
-  async delete(id: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('expenses')
-        .delete()
-        .eq('id', id)
-      
-      if (error) throw error
-    } catch (error) {
-      console.error('Error deleting expense:', error)
-      throw error
-    }
-  },
-
-  async getByCategory(userId: string, category: string): Promise<Expense[]> {
-    try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('category', category)
-        .order('expense_date', { ascending: false })
-      
-      if (error) throw error
-      return data || []
-    } catch (error) {
-      console.error('Error fetching expenses by category:', error)
-      throw error
-    }
-  },
-
-  async getTaxDeductible(userId: string): Promise<Expense[]> {
-    try {
-      const { data, error } = await supabase
-        .from('expenses')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('tax_deductible', true)
-        .order('expense_date', { ascending: false })
-      
-      if (error) throw error
-      return data || []
-    } catch (error) {
-      console.error('Error fetching tax deductible expenses:', error)
-      throw error
-    }
-  }
-}
-
-// Profile operations
-export const profilesApi = {
-  async get(userId: string): Promise<Profile | null> {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle()
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error fetching profile:', error)
-      throw error
-    }
-  },
-
-  async create(profile: ProfileInsert): Promise<Profile> {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .insert(profile)
-        .select()
-        .single()
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error creating profile:', error)
-      throw error
-    }
-  },
-
-  async update(userId: string, updates: ProfileUpdate): Promise<Profile> {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId)
-        .select()
-        .single()
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error updating profile:', error)
-      throw error
-    }
-  },
-
-  async delete(userId: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId)
-      
-      if (error) throw error
-    } catch (error) {
-      console.error('Error deleting profile:', error)
-      throw error
-    }
-  }
-}
-
-// Notification operations
-export const notificationsApi = {
-  async getAll(userId: string): Promise<Notification[]> {
-    try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-      
-      if (error) throw error
-      return data || []
-    } catch (error) {
-      console.error('Error fetching notifications:', error)
-      throw error
-    }
-  },
-
-  async getUnread(userId: string): Promise<Notification[]> {
-    try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('is_read', false)
-        .order('created_at', { ascending: false })
-      
-      if (error) throw error
-      return data || []
-    } catch (error) {
-      console.error('Error fetching unread notifications:', error)
-      throw error
-    }
-  },
-
-  async markAsRead(id: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('id', id)
-      
-      if (error) throw error
-    } catch (error) {
-      console.error('Error marking notification as read:', error)
-      throw error
-    }
-  },
-
-  async markAllAsRead(userId: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', userId)
-        .eq('is_read', false)
-      
-      if (error) throw error
-    } catch (error) {
-      console.error('Error marking all notifications as read:', error)
-      throw error
-    }
-  },
-
-  async create(notification: NotificationInsert): Promise<Notification> {
-    try {
-      const { data, error } = await supabase
-        .from('notifications')
-        .insert(notification)
-        .select()
-        .single()
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error creating notification:', error)
-      throw error
-    }
-  }
-}
-
-// Dashboard stats
-export const dashboardApi = {
-  async getStats(userId: string) {
-    try {
-      const [clients, reminders, invoices, expenses] = await Promise.all([
-        clientsApi.getAll(userId),
-        remindersApi.getUpcoming(userId),
-        invoicesApi.getAll(userId),
-        expensesApi.getAll(userId)
-      ])
-
-      const activeClients = clients.filter(c => c.status === 'active').length
-      const pendingReminders = reminders.filter(r => ['pending', 'active'].includes(r.status)).length
-      const pendingInvoices = invoices.filter(i => ['unpaid', 'pending'].includes(i.status))
-      const overdueInvoices = invoices.filter(i => {
-        const today = new Date().toISOString().split('T')[0]
-        return ['unpaid', 'pending'].includes(i.status) && i.due_date < today
-      })
-
-      const totalPendingAmount = pendingInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0)
-      const totalOverdueAmount = overdueInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0)
-      const totalExpenses = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0)
-      const totalRevenue = invoices.filter(i => (i.status || '') === 'paid').reduce((sum, inv) => sum + (inv.amount || 0), 0)
-
-      return {
-        activeClients,
-        pendingReminders,
-        pendingInvoicesCount: pendingInvoices.length,
-        overdueInvoicesCount: overdueInvoices.length,
-        totalPendingAmount,
-        totalOverdueAmount,
-        totalExpenses,
-        totalRevenue,
-        recentClients: clients.slice(0, 5),
-        upcomingReminders: reminders.filter(r => ['pending', 'active'].includes(r.status || '')).slice(0, 5),
-        recentInvoices: invoices.slice(0, 5),
-        recentExpenses: expenses.slice(0, 5)
-      }
-    } catch (error) {
-      console.error('Error fetching dashboard stats:', error)
-      throw error
-    }
-  }
-}
-
-// Currency utilities
-export const currencyUtils = {
-  // Get user's preferred currency from profile
-  async getUserCurrency(userId: string): Promise<string> {
-    try {
-      const profile = await profilesApi.get(userId)
-      return profile?.currency || 'USD'
-    } catch (error) {
-      console.error('Error getting user currency:', error)
-      return 'USD'
-    }
-  },
-
-  // Format currency based on user preference
-  formatCurrency(amount: number, currency: string = 'USD'): string {
-    try {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currency,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(amount)
-    } catch (error) {
-      // Fallback to USD if currency is invalid
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(amount)
-    }
-  },
-
-  // Get currency symbol
-  getCurrencySymbol(currency: string = 'USD'): string {
-    const symbols: { [key: string]: string } = {
-      'USD': '$',
-      'EUR': '€',
-      'GBP': '£',
-      'CAD': 'C$',
-      'AUD': 'A$',
-      'JPY': '¥',
-      'CHF': 'CHF',
-      'CNY': '¥',
-      'INR': '₹'
-    }
-    return symbols[currency] || '$'
-  },
-
-  // Available currencies
-  getAvailableCurrencies() {
-    return [
-      { code: 'USD', name: 'US Dollar', symbol: '$' },
-      { code: 'EUR', name: 'Euro', symbol: '€' },
-      { code: 'GBP', name: 'British Pound', symbol: '£' },
-      { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
-      { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
-      { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
-      { code: 'CHF', name: 'Swiss Franc', symbol: 'CHF' },
-      { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
-      { code: 'INR', name: 'Indian Rupee', symbol: '₹' }
+  const features = {
+    free: [
+      'Up to 20 clients',
+      'Basic reminders',
+      'Invoice tracking',
+      'Expense tracking',
+      'Email support'
+    ],
+    pro: [
+      'Unlimited clients',
+      'AI-powered reminders',
+      'Advanced analytics',
+      'Progress charts',
+      'Priority support',
+      'Custom branding',
+      'Export data',
+      'Advanced filters'
     ]
   }
+
+  const handleUpgrade = async () => {
+    setIsLoading(true)
+    
+    // In a real app, this would integrate with Stripe or another payment processor
+    // For now, we'll simulate the upgrade process
+    
+    try {
+      // Simulate payment processing
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Here you would:
+      // 1. Create Stripe checkout session
+      // 2. Handle payment confirmation
+      // 3. Update user's plan in database
+      
+      alert('Upgrade functionality would be implemented with Stripe integration')
+      
+    } catch (error) {
+      console.error('Upgrade error:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  return (
+    <Layout>
+      <div className="p-6 max-w-6xl mx-auto">
+        <button 
+          onClick={() => navigate('/dashboard')}
+          className="flex items-center text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-8 transition-colors duration-200"
+        >
+          <ArrowLeft className="w-5 h-5 mr-2" />
+          Back to Dashboard
+        </button>
+
+        <div className="text-center mb-12">
+          <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Crown className="w-10 h-10 text-purple-600 dark:text-purple-400" />
+          </div>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+            Upgrade to Pro
+          </h1>
+          <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+            Unlock advanced features and take your freelance business to the next level
+          </p>
+        </div>
+
+        {/* Current Plan */}
+        {profile && (
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-6 mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-300">
+                  Current Plan: {profile.plan === 'free' ? 'Free' : 'Pro'}
+                </h3>
+                <p className="text-blue-700 dark:text-blue-400">
+                  {profile.plan === 'free' 
+                    ? 'You\'re currently on the free plan'
+                    : 'Thank you for being a Pro subscriber!'
+                  }
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-blue-900 dark:text-blue-300">
+                  {profile.plan === 'free' ? '$0' : '$2.99'}
+                </p>
+                <p className="text-sm text-blue-700 dark:text-blue-400">per month</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Pricing Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+          {/* Free Plan */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 p-8">
+            <div className="text-center mb-8">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Free</h3>
+              <div className="text-4xl font-bold text-gray-900 dark:text-white mb-2">$0</div>
+              <p className="text-gray-600 dark:text-gray-400">Forever free</p>
+            </div>
+
+            <ul className="space-y-4 mb-8">
+              {features.free.map((feature, index) => (
+                <li key={index} className="flex items-center">
+                  <Check className="w-5 h-5 text-green-500 mr-3 flex-shrink-0" />
+                  <span className="text-gray-700 dark:text-gray-300">{feature}</span>
+                </li>
+              ))}
+            </ul>
+
+            <button
+              disabled={profile?.plan === 'free'}
+              className="w-full py-3 px-6 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+            >
+              {profile?.plan === 'free' ? 'Current Plan' : 'Downgrade to Free'}
+            </button>
+          </div>
+
+          {/* Pro Plan */}
+          <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-2xl p-8 relative">
+            {/* Popular badge */}
+            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+              <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-2 rounded-full text-sm font-medium flex items-center">
+                <Star className="w-4 h-4 mr-1" />
+                Most Popular
+              </div>
+            </div>
+
+            <div className="text-center mb-8 mt-4">
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Pro</h3>
+              <div className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                ${PRICING.pro.monthly}
+              </div>
+              <p className="text-gray-600 dark:text-gray-400">per month</p>
+            </div>
+
+            <ul className="space-y-4 mb-8">
+              {features.pro.map((feature, index) => (
+                <li key={index} className="flex items-center">
+                  <div className="w-5 h-5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                    <Check className="w-3 h-3 text-white" />
+                  </div>
+                  <span className="text-gray-700 dark:text-gray-300">{feature}</span>
+                </li>
+              ))}
+            </ul>
+
+            <button
+              onClick={handleUpgrade}
+              disabled={isLoading || profile?.plan !== 'free'}
+              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 px-6 rounded-xl font-medium hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center justify-center"
+            >
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                  Processing...
+                </>
+              ) : profile?.plan === 'free' ? (
+                <>
+                  <Crown className="w-5 h-5 mr-2" />
+                  Upgrade to Pro
+                </>
+              ) : (
+                'Current Plan'
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Feature Highlights */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/20 dark:to-blue-800/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Zap className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              AI-Powered Reminders
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">
+              Smart notifications that learn from your patterns and suggest optimal follow-up times
+            </p>
+          </div>
+
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/20 dark:to-green-800/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <BarChart3 className="w-8 h-8 text-green-600 dark:text-green-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Advanced Analytics
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">
+              Detailed insights into your business performance with interactive charts and reports
+            </p>
+          </div>
+
+          <div className="text-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/20 dark:to-purple-800/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Headphones className="w-8 h-8 text-purple-600 dark:text-purple-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Priority Support
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">
+              Get faster response times and dedicated support from our team
+            </p>
+          </div>
+        </div>
+
+        {/* FAQ */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-8">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 text-center">
+            Frequently Asked Questions
+          </h2>
+
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                Can I cancel anytime?
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                Yes, you can cancel your Pro subscription at any time. You'll continue to have access to Pro features until the end of your billing period.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                What happens to my data if I downgrade?
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                Your data is always safe. If you downgrade, you'll lose access to Pro features but all your data remains intact.
+              </p>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                Is there a free trial?
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                The free plan gives you access to core features forever. You can upgrade to Pro anytime to unlock advanced features.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Layout>
+  )
 }

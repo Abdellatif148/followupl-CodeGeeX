@@ -4,6 +4,8 @@ import { invoicesApi, clientsApi } from '../lib/database'
 import { supabase } from '../lib/supabase'
 import type { Client } from '../types/database'
 import { useBusinessAnalytics } from '../hooks/useAnalytics'
+import { validateInvoiceForm, sanitizeInput } from '../utils/validators'
+import { handleApiError } from '../utils/errorHandling'
 
 interface InvoiceFormProps {
   onSuccess?: () => void
@@ -23,6 +25,8 @@ export default function InvoiceForm({ onSuccess, onCancel, editingInvoice }: Inv
     status: 'unpaid'
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formErrors, setFormErrors] = useState<string[]>([])
+  const [formWarnings, setFormWarnings] = useState<string[]>([])
   const [notification, setNotification] = useState<{
     type: 'success' | 'error'
     message: string
@@ -57,52 +61,43 @@ export default function InvoiceForm({ onSuccess, onCancel, editingInvoice }: Inv
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
+    
+    // Clear errors when user starts typing
+    if (formErrors.length > 0) {
+      setFormErrors([])
+    }
+    if (formWarnings.length > 0) {
+      setFormWarnings([])
+    }
+    
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'project' ? sanitizeInput(value) : value
     }))
   }
 
-  const validateForm = () => {
-    if (!formData.client_id) {
-      setNotification({
-        type: 'error',
-        message: 'Please select a client'
-      })
-      return false
-    }
-
-    if (!formData.project.trim()) {
-      setNotification({
-        type: 'error',
-        message: 'Project description is required'
-      })
-      return false
-    }
-
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      setNotification({
-        type: 'error',
-        message: 'Please enter a valid amount'
-      })
-      return false
-    }
-
-    if (!formData.due_date) {
-      setNotification({
-        type: 'error',
-        message: 'Due date is required'
-      })
-      return false
-    }
-
-    return true
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!validateForm()) return
+    // Validate form
+    const validation = validateInvoiceForm({
+      client_id: formData.client_id,
+      project: formData.project,
+      amount: formData.amount,
+      due_date: formData.due_date
+    })
+    
+    setFormErrors(validation.errors)
+    setFormWarnings(validation.warnings || [])
+    
+    if (!validation.isValid) {
+      setNotification({
+        type: 'error',
+        message: validation.errors[0]
+      })
+      return
+    }
 
     setIsSubmitting(true)
     setNotification(null)
@@ -117,8 +112,8 @@ export default function InvoiceForm({ onSuccess, onCancel, editingInvoice }: Inv
       const invoiceData = {
         user_id: user.id,
         client_id: formData.client_id,
-        project: formData.project.trim(),
-        title: formData.project.trim(),
+        project: sanitizeInput(formData.project.trim()),
+        title: sanitizeInput(formData.project.trim()),
         amount: parseFloat(formData.amount),
         currency: formData.currency,
         due_date: new Date(formData.due_date).toISOString(),
@@ -165,6 +160,8 @@ export default function InvoiceForm({ onSuccess, onCancel, editingInvoice }: Inv
           due_date: '',
           status: 'unpaid'
         })
+        setFormErrors([])
+        setFormWarnings([])
       }
 
       // Call success callback after a short delay
@@ -174,9 +171,10 @@ export default function InvoiceForm({ onSuccess, onCancel, editingInvoice }: Inv
 
     } catch (error) {
       console.error('Error saving invoice:', error)
+      const appError = handleApiError(error, 'invoice save')
       setNotification({
         type: 'error',
-        message: 'Failed to save invoice. Please try again.'
+        message: appError.message
       })
     } finally {
       setIsSubmitting(false)
@@ -201,6 +199,7 @@ export default function InvoiceForm({ onSuccess, onCancel, editingInvoice }: Inv
           <button
             onClick={onCancel}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
+            aria-label="Close form"
           >
             ✕
           </button>
@@ -225,6 +224,44 @@ export default function InvoiceForm({ onSuccess, onCancel, editingInvoice }: Inv
           }`}>
             {notification.message}
           </p>
+        </div>
+      )}
+      
+      {/* Form Errors */}
+      {formErrors.length > 0 && (
+        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-medium text-red-800 dark:text-red-300 mb-1">
+                Please fix the following errors:
+              </h4>
+              <ul className="text-sm text-red-700 dark:text-red-400 space-y-1">
+                {formErrors.map((error, index) => (
+                  <li key={index}>• {error}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Form Warnings */}
+      {formWarnings.length > 0 && (
+        <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-yellow-500 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-1">
+                Warnings:
+              </h4>
+              <ul className="text-sm text-yellow-700 dark:text-yellow-400 space-y-1">
+                {formWarnings.map((warning, index) => (
+                  <li key={index}>• {warning}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </div>
       )}
 
@@ -270,6 +307,7 @@ export default function InvoiceForm({ onSuccess, onCancel, editingInvoice }: Inv
               className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
               placeholder="Website development, logo design, etc."
               disabled={isSubmitting}
+              maxLength={1000}
             />
           </div>
         </div>
@@ -290,6 +328,7 @@ export default function InvoiceForm({ onSuccess, onCancel, editingInvoice }: Inv
                 required
                 min="0"
                 step="0.01"
+                max="999999999.99"
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
                 placeholder="0.00"
                 disabled={isSubmitting}
@@ -359,7 +398,7 @@ export default function InvoiceForm({ onSuccess, onCancel, editingInvoice }: Inv
         <div className="flex flex-col sm:flex-row gap-3 pt-4">
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || formErrors.length > 0}
             className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center font-medium"
           >
             {isSubmitting ? (

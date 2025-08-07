@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
+import { useAnalytics } from '../hooks/useAnalytics'
 import DarkModeToggle from './DarkModeToggle'
 import LanguageSwitcher from './LanguageSwitcher'
 import NotificationCenter from './NotificationCenter'
@@ -29,6 +30,7 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const { user, profile, signOut } = useAuth()
   const { success } = useToast()
+  const { trackFeatureUsage } = useAnalytics()
   const location = useLocation()
   const navigate = useNavigate()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
@@ -53,6 +55,9 @@ export default function Layout({ children }: LayoutProps) {
 
   const handleSignOut = async () => {
     try {
+      // Track sign out
+      trackFeatureUsage('auth', 'signout')
+      
       await signOut()
       success('Signed out successfully')
       navigate('/')
@@ -75,6 +80,11 @@ export default function Layout({ children }: LayoutProps) {
     return location.pathname === href || 
            (href !== '/dashboard' && location.pathname.startsWith(href))
   }
+  
+  // Track page navigation
+  useEffect(() => {
+    trackFeatureUsage('navigation', 'page_view')
+  }, [location.pathname, trackFeatureUsage])
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
@@ -106,6 +116,7 @@ export default function Layout({ children }: LayoutProps) {
             <button
               onClick={() => setIsSidebarOpen(false)}
               className="lg:hidden text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              aria-label="Close sidebar"
             >
               <X className="w-6 h-6" />
             </button>
@@ -121,12 +132,16 @@ export default function Layout({ children }: LayoutProps) {
                 <Link
                   key={item.name}
                   to={item.href}
-                  onClick={() => setIsSidebarOpen(false)}
+                  onClick={() => {
+                    setIsSidebarOpen(false)
+                    trackFeatureUsage('navigation', item.name.toLowerCase())
+                  }}
                   className={`flex items-center px-4 py-3 rounded-xl transition-all duration-200 group ${
                     active
                       ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                   }`}
+                  aria-label={`Navigate to ${item.name}`}
                 >
                   <Icon className={`w-5 h-5 mr-3 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`} />
                   <span className="font-medium">{item.name}</span>
@@ -158,6 +173,7 @@ export default function Layout({ children }: LayoutProps) {
                 onClick={handleSignOut}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
                 title="Sign out"
+                aria-label="Sign out"
               >
                 <LogOut className="w-5 h-5" />
               </button>
@@ -174,6 +190,7 @@ export default function Layout({ children }: LayoutProps) {
             <button
               onClick={() => setIsSidebarOpen(true)}
               className="lg:hidden text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
+              aria-label="Open sidebar"
             >
               <Menu className="w-6 h-6" />
             </button>
@@ -187,6 +204,7 @@ export default function Layout({ children }: LayoutProps) {
                 <button
                   onClick={() => setShowNotifications(!showNotifications)}
                   className="relative p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-200"
+                  aria-label={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ''}`}
                 >
                   <Bell className="w-6 h-6" />
                   {unreadCount > 0 && (
@@ -208,7 +226,7 @@ export default function Layout({ children }: LayoutProps) {
         </header>
 
         {/* Page content */}
-        <main className="min-h-[calc(100vh-73px)]">
+        <main className="min-h-[calc(100vh-73px)]" role="main">
           {children}
         </main>
       </div>

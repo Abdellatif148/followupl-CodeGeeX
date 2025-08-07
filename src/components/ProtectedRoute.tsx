@@ -2,12 +2,15 @@ import React, { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useAuthAnalytics } from '../hooks/useAnalytics'
+import { secureError, sessionSecurity } from '../lib/security'
+import LoadingSpinner from './LoadingSpinner'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
+  requiresPro?: boolean
 }
 
-export default function ProtectedRoute({ children }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, requiresPro = false }: ProtectedRouteProps) {
   const { user, loading, initialized, profile } = useAuth()
   const { setUserProfile } = useAuthAnalytics()
   const navigate = useNavigate()
@@ -15,8 +18,27 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   useEffect(() => {
     if (!initialized) return
 
+    // Validate session integrity
+    if (!sessionSecurity.validateSessionIntegrity()) {
+      secureError.logSecurityEvent('session_integrity_failed_on_route', {})
+      navigate('/login', { replace: true })
+      return
+    }
     if (!user) {
+      secureError.logSecurityEvent('unauthorized_route_access', { 
+        route: window.location.pathname 
+      })
       navigate('/login')
+      return
+    }
+    
+    // Check Pro requirement
+    if (requiresPro && profile?.plan === 'free') {
+      secureError.logSecurityEvent('pro_feature_access_denied', { 
+        userId: user.id,
+        route: window.location.pathname 
+      })
+      navigate('/upgrade')
       return
     }
 
@@ -42,15 +64,12 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
         localStorage.setItem('followuply-language-selected', 'true')
       }
     }
-  }, [user, loading, initialized, profile, navigate, setUserProfile])
+  }, [user, loading, initialized, profile, navigate, setUserProfile, requiresPro])
 
   if (!initialized || loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center transition-colors duration-300">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
+        <LoadingSpinner text="Initializing..." size="lg" />
       </div>
     )
   }

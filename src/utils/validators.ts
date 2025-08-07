@@ -1,8 +1,8 @@
 // Input validation utilities
+import { sanitize, validate as securityValidate, contentSecurity } from '../lib/security'
 
 export const validateEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email)
+  return securityValidate.email(email)
 }
 
 export const validatePhone = (phone: string): boolean => {
@@ -12,22 +12,19 @@ export const validatePhone = (phone: string): boolean => {
 }
 
 export const validateRequired = (value: string): boolean => {
-  return value.trim().length > 0
+  return securityValidate.textLength(value.trim(), 1)
 }
 
 export const validateAmount = (amount: string): boolean => {
-  const num = parseFloat(amount)
-  return !isNaN(num) && num > 0
+  return securityValidate.amount(amount)
 }
 
 export const validateDate = (date: string): boolean => {
-  const dateObj = new Date(date)
-  return dateObj instanceof Date && !isNaN(dateObj.getTime())
+  return securityValidate.date(date)
 }
 
 export const sanitizeInput = (input: string): string => {
-  // Remove potentially harmful characters
-  return input.trim().replace(/[<>]/g, '')
+  return sanitize.text(input)
 }
 
 export const validateClientForm = (data: {
@@ -36,9 +33,15 @@ export const validateClientForm = (data: {
   phone?: string
 }) => {
   const errors: string[] = []
+  const warnings: string[] = []
 
-  if (!validateRequired(data.name)) {
+  if (!data.name?.trim()) {
     errors.push('Client name is required')
+  } else {
+    const sanitizedName = sanitize.text(data.name)
+    if (!securityValidate.textLength(sanitizedName, 1, 100)) {
+      errors.push('Client name must be between 1 and 100 characters')
+    }
   }
 
   if (data.email && !validateEmail(data.email)) {
@@ -51,7 +54,8 @@ export const validateClientForm = (data: {
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
+    warnings
   }
 }
 
@@ -61,9 +65,18 @@ export const validateReminderForm = (data: {
   time: string
 }) => {
   const errors: string[] = []
+  const warnings: string[] = []
 
-  if (!validateRequired(data.title)) {
+  if (!data.title?.trim()) {
     errors.push('Reminder title is required')
+  } else {
+    const contentCheck = contentSecurity.validateContent(data.title, 'text')
+    if (!contentCheck.isValid) {
+      errors.push(...contentCheck.errors)
+    }
+    if (!securityValidate.textLength(data.title, 1, 200)) {
+      errors.push('Title must be between 1 and 200 characters')
+    }
   }
 
   if (!validateDate(data.date)) {
@@ -72,11 +85,22 @@ export const validateReminderForm = (data: {
 
   if (!data.time) {
     errors.push('Please enter a valid time')
+  } else if (!/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(data.time)) {
+    errors.push('Invalid time format')
+  }
+  
+  // Check if reminder is in the past
+  if (data.date && data.time) {
+    const reminderDateTime = new Date(`${data.date}T${data.time}`)
+    if (reminderDateTime < new Date()) {
+      warnings.push('Reminder is set for the past')
+    }
   }
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
+    warnings
   }
 }
 
@@ -87,25 +111,42 @@ export const validateInvoiceForm = (data: {
   due_date: string
 }) => {
   const errors: string[] = []
+  const warnings: string[] = []
 
-  if (!data.client_id) {
+  if (!data.client_id || !securityValidate.uuid(data.client_id)) {
     errors.push('Please select a client')
   }
 
-  if (!validateRequired(data.project)) {
+  if (!data.project?.trim()) {
     errors.push('Project description is required')
+  } else {
+    const contentCheck = contentSecurity.validateContent(data.project, 'text')
+    if (!contentCheck.isValid) {
+      errors.push(...contentCheck.errors)
+    }
   }
 
   if (!validateAmount(data.amount)) {
     errors.push('Please enter a valid amount')
+  } else {
+    const amount = parseFloat(data.amount)
+    if (amount > 100000) {
+      warnings.push('Large invoice amount - please verify')
+    }
   }
 
   if (!validateDate(data.due_date)) {
     errors.push('Please enter a valid due date')
+  } else {
+    const dueDate = new Date(data.due_date)
+    if (dueDate < new Date()) {
+      warnings.push('Due date is in the past')
+    }
   }
 
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
+    warnings
   }
 }

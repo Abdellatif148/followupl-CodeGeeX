@@ -3,6 +3,8 @@ import { User, Mail, Phone, Building, FileText, Tag, Loader2, CheckCircle, Alert
 import { clientsApi } from '../lib/database'
 import { supabase } from '../lib/supabase'
 import { useBusinessAnalytics } from '../hooks/useAnalytics'
+import { validateClientForm, sanitizeInput } from '../utils/validators'
+import { handleApiError } from '../utils/errorHandling'
 import type { Client } from '../types/database'
 
 interface ClientFormProps {
@@ -23,6 +25,8 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
     status: 'active'
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formErrors, setFormErrors] = useState<string[]>([])
+  const [formWarnings, setFormWarnings] = useState<string[]>([])
   const [notification, setNotification] = useState<{
     type: 'success' | 'error'
     message: string
@@ -44,9 +48,18 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
+    
+    // Clear errors when user starts typing
+    if (formErrors.length > 0) {
+      setFormErrors([])
+    }
+    if (formWarnings.length > 0) {
+      setFormWarnings([])
+    }
+    
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'tags' ? value : sanitizeInput(value)
     }))
   }
 
@@ -58,30 +71,27 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
     }))
   }
 
-  const validateForm = () => {
-    if (!formData.name.trim()) {
-      setNotification({
-        type: 'error',
-        message: 'Client name is required'
-      })
-      return false
-    }
-
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      setNotification({
-        type: 'error',
-        message: 'Please enter a valid email address'
-      })
-      return false
-    }
-
-    return true
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!validateForm()) return
+    // Validate form
+    const validation = validateClientForm({
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone
+    })
+    
+    setFormErrors(validation.errors)
+    setFormWarnings(validation.warnings || [])
+    
+    if (!validation.isValid) {
+      setNotification({
+        type: 'error',
+        message: validation.errors[0]
+      })
+      return
+    }
 
     setIsSubmitting(true)
     setNotification(null)
@@ -96,16 +106,17 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
       // Process tags
       const tagsArray = formData.tags
         .split(',')
-        .map(tag => tag.trim())
+        .map(tag => sanitizeInput(tag.trim()))
         .filter(tag => tag.length > 0)
+        .slice(0, 10) // Limit to 10 tags
 
       const clientData = {
         user_id: user.id,
-        name: formData.name.trim(),
-        email: formData.email.trim() || null,
-        phone: formData.phone.trim() || null,
-        company: formData.company.trim() || null,
-        notes: formData.project.trim() || null,
+        name: sanitizeInput(formData.name.trim()),
+        email: formData.email.trim() ? sanitizeInput(formData.email.trim()) : null,
+        phone: formData.phone.trim() ? sanitizeInput(formData.phone.trim()) : null,
+        company: formData.company.trim() ? sanitizeInput(formData.company.trim()) : null,
+        notes: formData.project.trim() ? sanitizeInput(formData.project.trim()) : null,
         tags: tagsArray,
         platform: 'direct' as const,
         status: formData.status as 'active' | 'inactive' | 'archived'
@@ -153,6 +164,8 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
           tags: '',
           status: 'active'
         })
+        setFormErrors([])
+        setFormWarnings([])
       }
 
       // Call success callback after a short delay
@@ -162,9 +175,10 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
 
     } catch (error) {
       console.error('Error saving client:', error)
+      const appError = handleApiError(error, 'client save')
       setNotification({
         type: 'error',
-        message: `Failed to ${editingClient ? 'update' : 'add'} client. Please try again.`
+        message: appError.message
       })
     } finally {
       setIsSubmitting(false)
@@ -181,6 +195,7 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
           <button
             onClick={onCancel}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
+            aria-label="Close form"
           >
             ✕
           </button>
@@ -207,6 +222,44 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
           </p>
         </div>
       )}
+      
+      {/* Form Errors */}
+      {formErrors.length > 0 && (
+        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-medium text-red-800 dark:text-red-300 mb-1">
+                Please fix the following errors:
+              </h4>
+              <ul className="text-sm text-red-700 dark:text-red-400 space-y-1">
+                {formErrors.map((error, index) => (
+                  <li key={index}>• {error}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Form Warnings */}
+      {formWarnings.length > 0 && (
+        <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-yellow-500 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-1">
+                Warnings:
+              </h4>
+              <ul className="text-sm text-yellow-700 dark:text-yellow-400 space-y-1">
+                {formWarnings.map((warning, index) => (
+                  <li key={index}>• {warning}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -226,6 +279,8 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
                 placeholder="Enter client name"
                 disabled={isSubmitting}
+                maxLength={100}
+                autoComplete="name"
               />
             </div>
           </div>
@@ -265,6 +320,7 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
                 placeholder="client@example.com"
                 disabled={isSubmitting}
+                autoComplete="email"
               />
             </div>
           </div>
@@ -284,8 +340,30 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
                 placeholder="+1 (555) 123-4567"
                 disabled={isSubmitting}
+                autoComplete="tel"
               />
             </div>
+          </div>
+        </div>
+        
+        <div>
+          <label htmlFor="company" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Company Name
+          </label>
+          <div className="relative">
+            <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
+            <input
+              type="text"
+              id="company"
+              name="company"
+              value={formData.company}
+              onChange={handleInputChange}
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
+              placeholder="Company Inc."
+              disabled={isSubmitting}
+              maxLength={100}
+              autoComplete="organization"
+            />
           </div>
 
           <div>
@@ -323,6 +401,7 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
               className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
               placeholder={editingClient ? "Add notes about this client..." : "Describe the project or add notes..."}
               disabled={isSubmitting}
+              maxLength={1000}
             />
           </div>
         </div>
@@ -342,17 +421,18 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
               className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
               placeholder="high-paying, recurring, urgent (comma separated)"
               disabled={isSubmitting}
+              maxLength={500}
             />
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Separate multiple tags with commas
+            Separate multiple tags with commas (max 10 tags)
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 pt-4">
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || formErrors.length > 0}
             className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center font-medium"
           >
             {isSubmitting ? (

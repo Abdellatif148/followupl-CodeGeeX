@@ -4,6 +4,8 @@ import { expensesApi, clientsApi } from '../lib/database'
 import { supabase } from '../lib/supabase'
 import type { Client } from '../types/database'
 import { useBusinessAnalytics } from '../hooks/useAnalytics'
+import { sanitizeInput, validateAmount, validateDate } from '../utils/validators'
+import { handleApiError } from '../utils/errorHandling'
 
 interface ExpenseFormProps {
   onSuccess?: () => void
@@ -29,6 +31,8 @@ export default function ExpenseForm({ onSuccess, onCancel, editingExpense }: Exp
     tags: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formErrors, setFormErrors] = useState<string[]>([])
+  const [formWarnings, setFormWarnings] = useState<string[]>([])
   const [notification, setNotification] = useState<{
     type: 'success' | 'error'
     message: string
@@ -91,6 +95,14 @@ export default function ExpenseForm({ onSuccess, onCancel, editingExpense }: Exp
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target
     
+    // Clear errors when user starts typing
+    if (formErrors.length > 0) {
+      setFormErrors([])
+    }
+    if (formWarnings.length > 0) {
+      setFormWarnings([])
+    }
+    
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked
       setFormData(prev => ({
@@ -100,45 +112,56 @@ export default function ExpenseForm({ onSuccess, onCancel, editingExpense }: Exp
     } else {
       setFormData(prev => ({
         ...prev,
-        [name]: value
+        [name]: ['title', 'description', 'subcategory', 'payment_method'].includes(name) ? sanitizeInput(value) : value
       }))
     }
   }
 
   const validateForm = () => {
+    const errors: string[] = []
+    const warnings: string[] = []
+    
     if (!formData.title.trim()) {
-      setNotification({
-        type: 'error',
-        message: 'Expense title is required'
-      })
-      return false
+      errors.push('Expense title is required')
+    } else if (formData.title.length > 200) {
+      errors.push('Title must be less than 200 characters')
     }
-
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      setNotification({
-        type: 'error',
-        message: 'Please enter a valid amount'
-      })
-      return false
+    
+    if (!formData.amount || !validateAmount(formData.amount)) {
+      errors.push('Please enter a valid amount')
+    } else {
+      const amount = parseFloat(formData.amount)
+      if (amount > 10000) {
+        warnings.push('Large expense amount - please verify')
+      }
     }
-
+    
     if (!formData.category) {
-      setNotification({
-        type: 'error',
-        message: 'Please select a category'
-      })
-      return false
+      errors.push('Please select a category')
+    } else if (!categories.includes(formData.category)) {
+      errors.push('Invalid category selected')
     }
-
-    if (!formData.expense_date) {
-      setNotification({
-        type: 'error',
-        message: 'Expense date is required'
-      })
-      return false
+    
+    if (!formData.expense_date || !validateDate(formData.expense_date)) {
+      errors.push('Please enter a valid expense date')
+    } else {
+      const expenseDate = new Date(formData.expense_date)
+      const today = new Date()
+      const oneYearAgo = new Date()
+      oneYearAgo.setFullYear(today.getFullYear() - 1)
+      
+      if (expenseDate > today) {
+        warnings.push('Expense date is in the future')
+      }
+      if (expenseDate < oneYearAgo) {
+        warnings.push('Expense date is more than a year old')
+      }
     }
-
-    return true
+    
+    setFormErrors(errors)
+    setFormWarnings(warnings)
+    
+    return errors.length === 0
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -159,20 +182,21 @@ export default function ExpenseForm({ onSuccess, onCancel, editingExpense }: Exp
       // Process tags
       const tagsArray = formData.tags
         .split(',')
-        .map(tag => tag.trim())
+        .map(tag => sanitizeInput(tag.trim()))
         .filter(tag => tag.length > 0)
+        .slice(0, 10) // Limit to 10 tags
 
       const expenseData = {
         user_id: user.id,
         client_id: formData.client_id || null,
-        title: formData.title.trim(),
-        description: formData.description.trim() || null,
+        title: sanitizeInput(formData.title.trim()),
+        description: formData.description.trim() ? sanitizeInput(formData.description.trim()) : null,
         amount: parseFloat(formData.amount),
         currency: formData.currency,
         category: formData.category,
-        subcategory: formData.subcategory.trim() || null,
+        subcategory: formData.subcategory.trim() ? sanitizeInput(formData.subcategory.trim()) : null,
         expense_date: new Date(formData.expense_date).toISOString(),
-        payment_method: formData.payment_method.trim() || null,
+        payment_method: formData.payment_method.trim() ? sanitizeInput(formData.payment_method.trim()) : null,
         tax_deductible: formData.tax_deductible,
         status: formData.status as 'pending' | 'approved' | 'reimbursed' | 'reconciled',
         tags: tagsArray.length > 0 ? tagsArray : null
@@ -226,6 +250,8 @@ export default function ExpenseForm({ onSuccess, onCancel, editingExpense }: Exp
           client_id: '',
           tags: ''
         })
+        setFormErrors([])
+        setFormWarnings([])
       }
 
       // Call success callback after a short delay
@@ -235,9 +261,10 @@ export default function ExpenseForm({ onSuccess, onCancel, editingExpense }: Exp
 
     } catch (error) {
       console.error('Error saving expense:', error)
+      const appError = handleApiError(error, 'expense save')
       setNotification({
         type: 'error',
-        message: 'Failed to save expense. Please try again.'
+        message: appError.message
       })
     } finally {
       setIsSubmitting(false)
@@ -254,6 +281,7 @@ export default function ExpenseForm({ onSuccess, onCancel, editingExpense }: Exp
           <button
             onClick={onCancel}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
+            aria-label="Close form"
           >
             ✕
           </button>
@@ -280,6 +308,44 @@ export default function ExpenseForm({ onSuccess, onCancel, editingExpense }: Exp
           </p>
         </div>
       )}
+      
+      {/* Form Errors */}
+      {formErrors.length > 0 && (
+        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-medium text-red-800 dark:text-red-300 mb-1">
+                Please fix the following errors:
+              </h4>
+              <ul className="text-sm text-red-700 dark:text-red-400 space-y-1">
+                {formErrors.map((error, index) => (
+                  <li key={index}>• {error}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Form Warnings */}
+      {formWarnings.length > 0 && (
+        <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-yellow-500 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-1">
+                Warnings:
+              </h4>
+              <ul className="text-sm text-yellow-700 dark:text-yellow-400 space-y-1">
+                {formWarnings.map((warning, index) => (
+                  <li key={index}>• {warning}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -299,6 +365,7 @@ export default function ExpenseForm({ onSuccess, onCancel, editingExpense }: Exp
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
                 placeholder="Software subscription, office supplies, etc."
                 disabled={isSubmitting}
+                maxLength={200}
               />
             </div>
           </div>
@@ -339,6 +406,7 @@ export default function ExpenseForm({ onSuccess, onCancel, editingExpense }: Exp
             className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
             placeholder="Add details about this expense..."
             disabled={isSubmitting}
+            maxLength={1000}
           />
         </div>
 
@@ -358,6 +426,7 @@ export default function ExpenseForm({ onSuccess, onCancel, editingExpense }: Exp
                 required
                 min="0"
                 step="0.01"
+                max="999999999.99"
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
                 placeholder="0.00"
                 disabled={isSubmitting}
@@ -419,6 +488,7 @@ export default function ExpenseForm({ onSuccess, onCancel, editingExpense }: Exp
               className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
               placeholder="e.g., Adobe Creative Suite, Office rent"
               disabled={isSubmitting}
+              maxLength={100}
             />
           </div>
 
@@ -435,6 +505,7 @@ export default function ExpenseForm({ onSuccess, onCancel, editingExpense }: Exp
               className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
               placeholder="Credit card, cash, bank transfer"
               disabled={isSubmitting}
+              maxLength={100}
             />
           </div>
         </div>
@@ -499,10 +570,11 @@ export default function ExpenseForm({ onSuccess, onCancel, editingExpense }: Exp
               className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
               placeholder="business, tax-deductible, recurring (comma separated)"
               disabled={isSubmitting}
+              maxLength={500}
             />
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Separate multiple tags with commas
+            Separate multiple tags with commas (max 10 tags)
           </p>
         </div>
 
@@ -524,7 +596,7 @@ export default function ExpenseForm({ onSuccess, onCancel, editingExpense }: Exp
         <div className="flex flex-col sm:flex-row gap-3 pt-4">
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || formErrors.length > 0}
             className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center font-medium"
           >
             {isSubmitting ? (

@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { secureError, validate, sanitize } from './security'
 import type { 
   Client, ClientInsert, ClientUpdate,
   Reminder, ReminderInsert, ReminderUpdate,
@@ -37,6 +38,13 @@ interface ExpenseWithClient extends Expense {
 const handleDatabaseError = (error: any, operation: string) => {
   console.error(`Database error in ${operation}:`, error)
   
+  // Log security event for database errors
+  secureError.logSecurityEvent('database_error', {
+    operation,
+    code: error?.code,
+    message: error?.message
+  })
+  
   // Log to analytics if available
   if (typeof window !== 'undefined' && window.gtag) {
     window.gtag('event', 'database_error', {
@@ -56,13 +64,16 @@ const handleDatabaseError = (error: any, operation: string) => {
 export const clientsApi = {
   async getAll(userId: string): Promise<Client[]> {
     try {
-      if (!userId) throw new Error('User ID is required')
+      if (!userId || !validate.uuid(userId)) {
+        throw new Error('Valid user ID is required')
+      }
       
       const { data, error } = await supabase
         .from('clients')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
+        .limit(1000) // Prevent excessive data loading
       
       if (error) throw error
       return data || []
@@ -73,7 +84,9 @@ export const clientsApi = {
 
   async getById(id: string): Promise<Client> {
     try {
-      if (!id) throw new Error('Client ID is required')
+      if (!id || !validate.uuid(id)) {
+        throw new Error('Valid client ID is required')
+      }
       
       const { data, error } = await supabase
         .from('clients')
@@ -90,12 +103,29 @@ export const clientsApi = {
 
   async create(client: ClientInsert): Promise<Client> {
     try {
-      if (!client.user_id) throw new Error('User ID is required')
-      if (!client.name?.trim()) throw new Error('Client name is required')
+      if (!client.user_id || !validate.uuid(client.user_id)) {
+        throw new Error('Valid user ID is required')
+      }
+      if (!client.name?.trim() || !validate.textLength(client.name, 1, 100)) {
+        throw new Error('Client name must be between 1 and 100 characters')
+      }
+      if (client.email && !validate.email(client.email)) {
+        throw new Error('Invalid email format')
+      }
+      
+      // Sanitize input data
+      const sanitizedClient = {
+        ...client,
+        name: sanitize.text(client.name),
+        email: client.email ? sanitize.email(client.email) : null,
+        phone: client.phone ? sanitize.phone(client.phone) : null,
+        company: client.company ? sanitize.text(client.company) : null,
+        notes: client.notes ? sanitize.text(client.notes) : null
+      }
       
       const { data, error } = await supabase
         .from('clients')
-        .insert(client)
+        .insert(sanitizedClient)
         .select()
         .single()
       
@@ -108,12 +138,53 @@ export const clientsApi = {
 
   async update(id: string, updates: ClientUpdate): Promise<Client> {
     try {
-      if (!id) throw new Error('Client ID is required')
+      if (!id || !validate.uuid(id)) {
+        throw new Error('Valid client ID is required')
+      }
+      
+      // Sanitize updates
+      const sanitizedUpdates: ClientUpdate = {}
+      if (updates.name !== undefined) {
+        sanitizedUpdates.name = sanitize.text(updates.name)
+        if (!validate.textLength(sanitizedUpdates.name, 1, 100)) {
+          throw new Error('Client name must be between 1 and 100 characters')
+        }
+      }
+      if (updates.email !== undefined) {
+        sanitizedUpdates.email = updates.email ? sanitize.email(updates.email) : null
+        if (sanitizedUpdates.email && !validate.email(sanitizedUpdates.email)) {
+          throw new Error('Invalid email format')
+        }
+      }
+      if (updates.phone !== undefined) {
+        sanitizedUpdates.phone = updates.phone ? sanitize.phone(updates.phone) : null
+      }
+      if (updates.company !== undefined) {
+        sanitizedUpdates.company = updates.company ? sanitize.text(updates.company) : null
+      }
+      if (updates.notes !== undefined) {
+        sanitizedUpdates.notes = updates.notes ? sanitize.text(updates.notes) : null
+      }
+      if (updates.tags !== undefined) {
+        sanitizedUpdates.tags = updates.tags?.map(tag => sanitize.text(tag)).filter(tag => tag.length > 0)
+      }
+      if (updates.status !== undefined) {
+        if (!['active', 'inactive', 'archived'].includes(updates.status)) {
+          throw new Error('Invalid status value')
+        }
+        sanitizedUpdates.status = updates.status
+      }
+      if (updates.platform !== undefined) {
+        if (!['fiverr', 'upwork', 'direct', 'other'].includes(updates.platform)) {
+          throw new Error('Invalid platform value')
+        }
+        sanitizedUpdates.platform = updates.platform
+      }
       
       const { data, error } = await supabase
         .from('clients')
         .update({
-          ...updates,
+          ...sanitizedUpdates,
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
@@ -129,7 +200,9 @@ export const clientsApi = {
 
   async delete(id: string): Promise<void> {
     try {
-      if (!id) throw new Error('Client ID is required')
+      if (!id || !validate.uuid(id)) {
+        throw new Error('Valid client ID is required')
+      }
       
       const { error } = await supabase
         .from('clients')
@@ -144,14 +217,18 @@ export const clientsApi = {
 
   async search(userId: string, query: string): Promise<Client[]> {
     try {
-      if (!userId) throw new Error('User ID is required')
-      if (!query?.trim()) return []
+      if (!userId || !validate.uuid(userId)) {
+        throw new Error('Valid user ID is required')
+      }
+      if (!query?.trim() || query.length < 2) return []
+      
+      const sanitizedQuery = sanitize.text(query).substring(0, 100)
       
       const { data, error } = await supabase
         .from('clients')
         .select('*')
         .eq('user_id', userId)
-        .or(`name.ilike.%${query}%,email.ilike.%${query}%,company.ilike.%${query}%,notes.ilike.%${query}%`)
+        .or(`name.ilike.%${sanitizedQuery}%,email.ilike.%${sanitizedQuery}%,company.ilike.%${sanitizedQuery}%,notes.ilike.%${sanitizedQuery}%`)
         .order('created_at', { ascending: false })
         .limit(50)
       
@@ -193,8 +270,40 @@ export const remindersApi = {
     })
   },
 
+  async requestBrowserNotificationPermission(): Promise<void> {
+    if (!('Notification' in window)) {
+      console.log('This browser does not support desktop notification')
+      return
+    }
+
+    if (Notification.permission === 'granted') return
+
+    try {
+      await Notification.requestPermission()
+    } catch (error) {
+      console.error('Error requesting notification permission:', error)
+    }
+  },
+
+  async showBrowserNotification(reminder: Reminder): Promise<void> {
+    if (Notification.permission !== 'granted') return
+
+    new Notification('FollowUply', {
+      body: `⏰ ${reminder.title} is due soon!`,
+      icon: '/followuplyImage-removebg-preview.png',
+      data: {
+        reminderId: reminder.id,
+        type: 'reminder'
+      }
+    })
+  },
+
   async getAll(userId: string): Promise<ReminderWithClient[]> {
     try {
+      if (!userId || !validate.uuid(userId)) {
+        throw new Error('Valid user ID is required')
+      }
+      
       const { data, error } = await supabase
         .from('reminders')
         .select(`
@@ -207,6 +316,7 @@ export const remindersApi = {
         `)
         .eq('user_id', userId)
         .order('due_date', { ascending: true })
+        .limit(1000)
       
       if (error) throw error
       return data || []
@@ -218,6 +328,10 @@ export const remindersApi = {
 
   async getUpcoming(userId: string, days: number = 7): Promise<ReminderWithClient[]> {
     try {
+      if (!userId || !validate.uuid(userId)) {
+        throw new Error('Valid user ID is required')
+      }
+      
       const futureDate = new Date()
       futureDate.setDate(futureDate.getDate() + days)
       
@@ -235,6 +349,7 @@ export const remindersApi = {
         .in('status', ['pending', 'active'])
         .lte('due_date', futureDate.toISOString())
         .order('due_date', { ascending: true })
+        .limit(100)
       
       if (error) throw error
       return data || []
@@ -246,9 +361,27 @@ export const remindersApi = {
 
   async create(reminder: ReminderInsert): Promise<Reminder> {
     try {
+      if (!reminder.user_id || !validate.uuid(reminder.user_id)) {
+        throw new Error('Valid user ID is required')
+      }
+      if (!reminder.title?.trim() || !validate.textLength(reminder.title, 1, 200)) {
+        throw new Error('Reminder title must be between 1 and 200 characters')
+      }
+      if (!reminder.due_date || !validate.date(reminder.due_date)) {
+        throw new Error('Valid due date is required')
+      }
+      
+      // Sanitize input data
+      const sanitizedReminder = {
+        ...reminder,
+        title: sanitize.text(reminder.title),
+        description: reminder.description ? sanitize.text(reminder.description) : null,
+        message: reminder.message ? sanitize.text(reminder.message) : null
+      }
+      
       const { data, error } = await supabase
         .from('reminders')
-        .insert(reminder)
+        .insert(sanitizedReminder)
         .select()
         .single()
       
@@ -262,10 +395,38 @@ export const remindersApi = {
 
   async update(id: string, updates: ReminderUpdate): Promise<Reminder> {
     try {
+      if (!id || !validate.uuid(id)) {
+        throw new Error('Valid reminder ID is required')
+      }
+      
+      // Sanitize updates
+      const sanitizedUpdates: ReminderUpdate = {}
+      if (updates.title !== undefined) {
+        sanitizedUpdates.title = sanitize.text(updates.title)
+        if (!validate.textLength(sanitizedUpdates.title, 1, 200)) {
+          throw new Error('Title must be between 1 and 200 characters')
+        }
+      }
+      if (updates.description !== undefined) {
+        sanitizedUpdates.description = updates.description ? sanitize.text(updates.description) : null
+      }
+      if (updates.message !== undefined) {
+        sanitizedUpdates.message = updates.message ? sanitize.text(updates.message) : null
+      }
+      if (updates.due_date !== undefined && !validate.date(updates.due_date)) {
+        throw new Error('Invalid due date')
+      }
+      if (updates.status !== undefined && !['active', 'completed', 'cancelled', 'pending'].includes(updates.status)) {
+        throw new Error('Invalid status value')
+      }
+      if (updates.priority !== undefined && !['low', 'medium', 'high', 'urgent'].includes(updates.priority)) {
+        throw new Error('Invalid priority value')
+      }
+      
       const { data, error } = await supabase
         .from('reminders')
         .update({
-          ...updates,
+          ...sanitizedUpdates,
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
@@ -282,6 +443,10 @@ export const remindersApi = {
 
   async delete(id: string): Promise<void> {
     try {
+      if (!id || !validate.uuid(id)) {
+        throw new Error('Valid reminder ID is required')
+      }
+      
       const { error } = await supabase
         .from('reminders')
         .delete()
@@ -296,6 +461,10 @@ export const remindersApi = {
 
   async markCompleted(id: string): Promise<Reminder> {
     try {
+      if (!id || !validate.uuid(id)) {
+        throw new Error('Valid reminder ID is required')
+      }
+      
       const { data, error } = await supabase
         .from('reminders')
         .update({ 
@@ -320,6 +489,10 @@ export const remindersApi = {
 export const invoicesApi = {
   async getAll(userId: string): Promise<InvoiceWithClient[]> {
     try {
+      if (!userId || !validate.uuid(userId)) {
+        throw new Error('Valid user ID is required')
+      }
+      
       const { data, error } = await supabase
         .from('invoices')
         .select(`
@@ -333,6 +506,7 @@ export const invoicesApi = {
         `)
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
+        .limit(1000)
       
       if (error) throw error
       return data || []
@@ -344,6 +518,10 @@ export const invoicesApi = {
 
   async getOverdue(userId: string): Promise<InvoiceWithClient[]> {
     try {
+      if (!userId || !validate.uuid(userId)) {
+        throw new Error('Valid user ID is required')
+      }
+      
       const today = new Date().toISOString().split('T')[0]
       
       const { data, error } = await supabase
@@ -361,6 +539,7 @@ export const invoicesApi = {
         .in('status', ['unpaid', 'pending'])
         .lt('due_date', today)
         .order('due_date', { ascending: true })
+        .limit(500)
       
       if (error) throw error
       return data || []
@@ -372,9 +551,33 @@ export const invoicesApi = {
 
   async create(invoice: InvoiceInsert): Promise<Invoice> {
     try {
+      if (!invoice.user_id || !validate.uuid(invoice.user_id)) {
+        throw new Error('Valid user ID is required')
+      }
+      if (!invoice.client_id || !validate.uuid(invoice.client_id)) {
+        throw new Error('Valid client ID is required')
+      }
+      if (!invoice.title?.trim()) {
+        throw new Error('Invoice title is required')
+      }
+      if (!invoice.amount || !validate.amount(invoice.amount)) {
+        throw new Error('Valid amount is required')
+      }
+      if (!invoice.due_date || !validate.date(invoice.due_date)) {
+        throw new Error('Valid due date is required')
+      }
+      
+      // Sanitize input data
+      const sanitizedInvoice = {
+        ...invoice,
+        title: sanitize.text(invoice.title),
+        description: invoice.description ? sanitize.text(invoice.description) : null,
+        project: invoice.project ? sanitize.text(invoice.project) : null
+      }
+      
       const { data, error } = await supabase
         .from('invoices')
-        .insert(invoice)
+        .insert(sanitizedInvoice)
         .select()
         .single()
       
@@ -388,10 +591,35 @@ export const invoicesApi = {
 
   async update(id: string, updates: InvoiceUpdate): Promise<Invoice> {
     try {
+      if (!id || !validate.uuid(id)) {
+        throw new Error('Valid invoice ID is required')
+      }
+      
+      // Sanitize updates
+      const sanitizedUpdates: InvoiceUpdate = {}
+      if (updates.title !== undefined) {
+        sanitizedUpdates.title = updates.title ? sanitize.text(updates.title) : null
+      }
+      if (updates.description !== undefined) {
+        sanitizedUpdates.description = updates.description ? sanitize.text(updates.description) : null
+      }
+      if (updates.project !== undefined) {
+        sanitizedUpdates.project = updates.project ? sanitize.text(updates.project) : null
+      }
+      if (updates.amount !== undefined && !validate.amount(updates.amount)) {
+        throw new Error('Invalid amount')
+      }
+      if (updates.due_date !== undefined && !validate.date(updates.due_date)) {
+        throw new Error('Invalid due date')
+      }
+      if (updates.status !== undefined && !['draft', 'sent', 'pending', 'paid', 'overdue', 'cancelled', 'unpaid'].includes(updates.status)) {
+        throw new Error('Invalid status value')
+      }
+      
       const { data, error } = await supabase
         .from('invoices')
         .update({
-          ...updates,
+          ...sanitizedUpdates,
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
@@ -408,6 +636,10 @@ export const invoicesApi = {
 
   async delete(id: string): Promise<void> {
     try {
+      if (!id || !validate.uuid(id)) {
+        throw new Error('Valid invoice ID is required')
+      }
+      
       const { error } = await supabase
         .from('invoices')
         .delete()
@@ -422,12 +654,18 @@ export const invoicesApi = {
 
   async markPaid(id: string, paymentMethod?: string): Promise<Invoice> {
     try {
+      if (!id || !validate.uuid(id)) {
+        throw new Error('Valid invoice ID is required')
+      }
+      
+      const sanitizedPaymentMethod = paymentMethod ? sanitize.text(paymentMethod) : null
+      
       const { data, error } = await supabase
         .from('invoices')
         .update({ 
           status: 'paid',
           payment_date: new Date().toISOString(),
-          payment_method: paymentMethod,
+          payment_method: sanitizedPaymentMethod,
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
@@ -447,7 +685,9 @@ export const invoicesApi = {
 export const expensesApi = {
   async getAll(userId: string): Promise<ExpenseWithClient[]> {
     try {
-      if (!userId) throw new Error('User ID is required')
+      if (!userId || !validate.uuid(userId)) {
+        throw new Error('Valid user ID is required')
+      }
       
       const { data, error } = await supabase
         .from('expenses')
@@ -471,15 +711,36 @@ export const expensesApi = {
 
   async create(expense: ExpenseInsert): Promise<Expense> {
     try {
-      if (!expense.user_id) throw new Error('User ID is required')
-      if (!expense.title?.trim()) throw new Error('Expense title is required')
-      if (!expense.amount || expense.amount <= 0) throw new Error('Valid amount is required')
-      if (!expense.category?.trim()) throw new Error('Category is required')
-      if (!expense.expense_date) throw new Error('Expense date is required')
+      if (!expense.user_id || !validate.uuid(expense.user_id)) {
+        throw new Error('Valid user ID is required')
+      }
+      if (!expense.title?.trim() || !validate.textLength(expense.title, 1, 200)) {
+        throw new Error('Expense title must be between 1 and 200 characters')
+      }
+      if (!expense.amount || !validate.amount(expense.amount)) {
+        throw new Error('Valid amount is required')
+      }
+      if (!expense.category?.trim()) {
+        throw new Error('Category is required')
+      }
+      if (!expense.expense_date || !validate.date(expense.expense_date)) {
+        throw new Error('Valid expense date is required')
+      }
+      
+      // Sanitize input data
+      const sanitizedExpense = {
+        ...expense,
+        title: sanitize.text(expense.title),
+        description: expense.description ? sanitize.text(expense.description) : null,
+        category: sanitize.text(expense.category),
+        subcategory: expense.subcategory ? sanitize.text(expense.subcategory) : null,
+        payment_method: expense.payment_method ? sanitize.text(expense.payment_method) : null,
+        tags: expense.tags?.map(tag => sanitize.text(tag)).filter(tag => tag.length > 0)
+      }
       
       const { data, error } = await supabase
         .from('expenses')
-        .insert(expense)
+        .insert(sanitizedExpense)
         .select()
         .single()
       
@@ -492,12 +753,45 @@ export const expensesApi = {
 
   async update(id: string, updates: ExpenseUpdate): Promise<Expense> {
     try {
-      if (!id) throw new Error('Expense ID is required')
+      if (!id || !validate.uuid(id)) {
+        throw new Error('Valid expense ID is required')
+      }
+      
+      // Sanitize updates
+      const sanitizedUpdates: ExpenseUpdate = {}
+      if (updates.title !== undefined) {
+        sanitizedUpdates.title = sanitize.text(updates.title)
+        if (!validate.textLength(sanitizedUpdates.title, 1, 200)) {
+          throw new Error('Title must be between 1 and 200 characters')
+        }
+      }
+      if (updates.description !== undefined) {
+        sanitizedUpdates.description = updates.description ? sanitize.text(updates.description) : null
+      }
+      if (updates.amount !== undefined && !validate.amount(updates.amount)) {
+        throw new Error('Invalid amount')
+      }
+      if (updates.expense_date !== undefined && !validate.date(updates.expense_date)) {
+        throw new Error('Invalid expense date')
+      }
+      if (updates.category !== undefined) {
+        sanitizedUpdates.category = sanitize.text(updates.category)
+      }
+      if (updates.subcategory !== undefined) {
+        sanitizedUpdates.subcategory = updates.subcategory ? sanitize.text(updates.subcategory) : null
+      }
+      if (updates.payment_method !== undefined) {
+        sanitizedUpdates.payment_method = updates.payment_method ? sanitize.text(updates.payment_method) : null
+      }
+      if (updates.tags !== undefined) {
+        sanitizedUpdates.tags = updates.tags?.map(tag => sanitize.text(tag)).filter(tag => tag.length > 0)
+      }
+      
       
       const { data, error } = await supabase
         .from('expenses')
         .update({
-          ...updates,
+          ...sanitizedUpdates,
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
@@ -513,7 +807,9 @@ export const expensesApi = {
 
   async delete(id: string): Promise<void> {
     try {
-      if (!id) throw new Error('Expense ID is required')
+      if (!id || !validate.uuid(id)) {
+        throw new Error('Valid expense ID is required')
+      }
       
       const { error } = await supabase
         .from('expenses')
@@ -528,14 +824,20 @@ export const expensesApi = {
 
   async getByCategory(userId: string, category: string): Promise<Expense[]> {
     try {
-      if (!userId) throw new Error('User ID is required')
-      if (!category) throw new Error('Category is required')
+      if (!userId || !validate.uuid(userId)) {
+        throw new Error('Valid user ID is required')
+      }
+      if (!category?.trim()) {
+        throw new Error('Category is required')
+      }
+      
+      const sanitizedCategory = sanitize.text(category)
       
       const { data, error } = await supabase
         .from('expenses')
         .select('*')
         .eq('user_id', userId)
-        .eq('category', category)
+        .eq('category', sanitizedCategory)
         .order('expense_date', { ascending: false })
         .limit(500)
       
@@ -548,7 +850,9 @@ export const expensesApi = {
 
   async getTaxDeductible(userId: string): Promise<Expense[]> {
     try {
-      if (!userId) throw new Error('User ID is required')
+      if (!userId || !validate.uuid(userId)) {
+        throw new Error('Valid user ID is required')
+      }
       
       const { data, error } = await supabase
         .from('expenses')
@@ -570,6 +874,10 @@ export const expensesApi = {
 export const profilesApi = {
   async get(userId: string): Promise<Profile | null> {
     try {
+      if (!userId || !validate.uuid(userId)) {
+        throw new Error('Valid user ID is required')
+      }
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -586,9 +894,23 @@ export const profilesApi = {
 
   async create(profile: ProfileInsert): Promise<Profile> {
     try {
+      if (!profile.id || !validate.uuid(profile.id)) {
+        throw new Error('Valid user ID is required')
+      }
+      if (!profile.email || !validate.email(profile.email)) {
+        throw new Error('Valid email is required')
+      }
+      
+      // Sanitize input data
+      const sanitizedProfile = {
+        ...profile,
+        full_name: sanitize.text(profile.full_name || ''),
+        email: sanitize.email(profile.email)
+      }
+      
       const { data, error } = await supabase
         .from('profiles')
-        .insert(profile)
+        .insert(sanitizedProfile)
         .select()
         .single()
       
@@ -602,10 +924,43 @@ export const profilesApi = {
 
   async update(userId: string, updates: ProfileUpdate): Promise<Profile> {
     try {
+      if (!userId || !validate.uuid(userId)) {
+        throw new Error('Valid user ID is required')
+      }
+      
+      // Sanitize updates
+      const sanitizedUpdates: ProfileUpdate = {}
+      if (updates.full_name !== undefined) {
+        sanitizedUpdates.full_name = sanitize.text(updates.full_name)
+        if (!validate.textLength(sanitizedUpdates.full_name, 0, 100)) {
+          throw new Error('Full name must be less than 100 characters')
+        }
+      }
+      if (updates.currency !== undefined) {
+        const validCurrencies = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF', 'CNY', 'INR']
+        if (!validCurrencies.includes(updates.currency)) {
+          throw new Error('Invalid currency')
+        }
+        sanitizedUpdates.currency = updates.currency
+      }
+      if (updates.language !== undefined) {
+        const validLanguages = ['en', 'fr', 'es', 'de', 'it', 'hi']
+        if (!validLanguages.includes(updates.language)) {
+          throw new Error('Invalid language')
+        }
+        sanitizedUpdates.language = updates.language
+      }
+      if (updates.plan !== undefined) {
+        if (!['free', 'pro', 'super_pro'].includes(updates.plan)) {
+          throw new Error('Invalid plan')
+        }
+        sanitizedUpdates.plan = updates.plan
+      }
+      
       const { data, error } = await supabase
         .from('profiles')
         .update({
-          ...updates,
+          ...sanitizedUpdates,
           updated_at: new Date().toISOString()
         })
         .eq('id', userId)
@@ -622,6 +977,10 @@ export const profilesApi = {
 
   async delete(userId: string): Promise<void> {
     try {
+      if (!userId || !validate.uuid(userId)) {
+        throw new Error('Valid user ID is required')
+      }
+      
       const { error } = await supabase
         .from('profiles')
         .delete()
@@ -639,11 +998,16 @@ export const profilesApi = {
 export const notificationsApi = {
   async getAll(userId: string): Promise<Notification[]> {
     try {
+      if (!userId || !validate.uuid(userId)) {
+        throw new Error('Valid user ID is required')
+      }
+      
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
+        .limit(500)
       
       if (error) throw error
       return data || []
@@ -655,12 +1019,17 @@ export const notificationsApi = {
 
   async getUnread(userId: string): Promise<Notification[]> {
     try {
+      if (!userId || !validate.uuid(userId)) {
+        throw new Error('Valid user ID is required')
+      }
+      
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', userId)
         .eq('is_read', false)
         .order('created_at', { ascending: false })
+        .limit(100)
       
       if (error) throw error
       return data || []
@@ -672,6 +1041,10 @@ export const notificationsApi = {
 
   async markAsRead(id: string): Promise<void> {
     try {
+      if (!id || !validate.uuid(id)) {
+        throw new Error('Valid notification ID is required')
+      }
+      
       const { error } = await supabase
         .from('notifications')
         .update({ is_read: true })
@@ -686,6 +1059,10 @@ export const notificationsApi = {
 
   async markAllAsRead(userId: string): Promise<void> {
     try {
+      if (!userId || !validate.uuid(userId)) {
+        throw new Error('Valid user ID is required')
+      }
+      
       const { error } = await supabase
         .from('notifications')
         .update({ is_read: true })
@@ -701,9 +1078,27 @@ export const notificationsApi = {
 
   async create(notification: NotificationInsert): Promise<Notification> {
     try {
+      if (!notification.user_id || !validate.uuid(notification.user_id)) {
+        throw new Error('Valid user ID is required')
+      }
+      if (!notification.title?.trim()) {
+        throw new Error('Notification title is required')
+      }
+      if (!notification.message?.trim()) {
+        throw new Error('Notification message is required')
+      }
+      
+      // Sanitize input data
+      const sanitizedNotification = {
+        ...notification,
+        title: sanitize.text(notification.title),
+        message: sanitize.text(notification.message),
+        action_url: notification.action_url ? sanitize.text(notification.action_url) : null
+      }
+      
       const { data, error } = await supabase
         .from('notifications')
-        .insert(notification)
+        .insert(sanitizedNotification)
         .select()
         .single()
       
@@ -720,6 +1115,10 @@ export const notificationsApi = {
 export const dashboardApi = {
   async getStats(userId: string) {
     try {
+      if (!userId || !validate.uuid(userId)) {
+        throw new Error('Valid user ID is required')
+      }
+      
       const [clients, reminders, invoices, expenses] = await Promise.all([
         clientsApi.getAll(userId),
         remindersApi.getUpcoming(userId),
@@ -766,6 +1165,10 @@ export const currencyUtils = {
   // Get user's preferred currency from profile
   async getUserCurrency(userId: string): Promise<string> {
     try {
+      if (!userId || !validate.uuid(userId)) {
+        return 'USD'
+      }
+      
       const profile = await profilesApi.get(userId)
       return profile?.currency || 'USD'
     } catch (error) {

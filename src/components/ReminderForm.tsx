@@ -4,6 +4,8 @@ import { remindersApi, clientsApi } from '../lib/database'
 import { supabase } from '../lib/supabase'
 import type { Client } from '../types/database'
 import { useBusinessAnalytics } from '../hooks/useAnalytics'
+import { validateReminderForm, sanitizeInput } from '../utils/validators'
+import { handleApiError } from '../utils/errorHandling'
 
 interface ReminderFormProps {
   onSuccess?: () => void
@@ -24,6 +26,8 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
     reminder_type: 'custom'
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formErrors, setFormErrors] = useState<string[]>([])
+  const [formWarnings, setFormWarnings] = useState<string[]>([])
   const [notification, setNotification] = useState<{
     type: 'success' | 'error'
     message: string
@@ -60,44 +64,42 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target
+    
+    // Clear errors when user starts typing
+    if (formErrors.length > 0) {
+      setFormErrors([])
+    }
+    if (formWarnings.length > 0) {
+      setFormWarnings([])
+    }
+    
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: ['title', 'description'].includes(name) ? sanitizeInput(value) : value
     }))
   }
 
-  const validateForm = () => {
-    if (!formData.title.trim()) {
-      setNotification({
-        type: 'error',
-        message: 'Reminder title is required'
-      })
-      return false
-    }
-
-    if (!formData.date) {
-      setNotification({
-        type: 'error',
-        message: 'Date is required'
-      })
-      return false
-    }
-
-    if (!formData.time) {
-      setNotification({
-        type: 'error',
-        message: 'Time is required'
-      })
-      return false
-    }
-
-    return true
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!validateForm()) return
+    // Validate form
+    const validation = validateReminderForm({
+      title: formData.title,
+      date: formData.date,
+      time: formData.time
+    })
+    
+    setFormErrors(validation.errors)
+    setFormWarnings(validation.warnings || [])
+    
+    if (!validation.isValid) {
+      setNotification({
+        type: 'error',
+        message: validation.errors[0]
+      })
+      return
+    }
 
     setIsSubmitting(true)
     setNotification(null)
@@ -111,12 +113,21 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
 
       // Combine date and time
       const datetime = new Date(`${formData.date}T${formData.time}`)
+      
+      // Validate datetime is not too far in the past
+      const now = new Date()
+      const oneYearAgo = new Date()
+      oneYearAgo.setFullYear(now.getFullYear() - 1)
+      
+      if (datetime < oneYearAgo) {
+        throw new Error('Reminder date cannot be more than a year in the past')
+      }
 
       const reminderData = {
         user_id: user.id,
-        title: formData.title.trim(),
-        description: formData.description.trim() || null,
-        message: formData.description.trim() || null,
+        title: sanitizeInput(formData.title.trim()),
+        description: formData.description.trim() ? sanitizeInput(formData.description.trim()) : null,
+        message: formData.description.trim() ? sanitizeInput(formData.description.trim()) : null,
         client_id: formData.client_id || null,
         due_date: datetime.toISOString(),
         datetime: datetime.toISOString(),
@@ -166,6 +177,8 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
           priority: 'medium',
           reminder_type: 'custom'
         })
+        setFormErrors([])
+        setFormWarnings([])
       }
 
       // Call success callback after a short delay
@@ -175,9 +188,10 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
 
     } catch (error) {
       console.error('Error saving reminder:', error)
+      const appError = handleApiError(error, 'reminder save')
       setNotification({
         type: 'error',
-        message: 'Failed to save reminder. Please try again.'
+        message: appError.message
       })
     } finally {
       setIsSubmitting(false)
@@ -192,6 +206,7 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
             <button
               onClick={onCancel}
               className="mr-3 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+              aria-label="Go back"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -204,6 +219,7 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
           <button
             onClick={onCancel}
             className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200"
+            aria-label="Close form"
           >
             <X className="w-5 h-5" />
           </button>
@@ -230,6 +246,44 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
           </p>
         </div>
       )}
+      
+      {/* Form Errors */}
+      {formErrors.length > 0 && (
+        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-medium text-red-800 dark:text-red-300 mb-1">
+                Please fix the following errors:
+              </h4>
+              <ul className="text-sm text-red-700 dark:text-red-400 space-y-1">
+                {formErrors.map((error, index) => (
+                  <li key={index}>• {error}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Form Warnings */}
+      {formWarnings.length > 0 && (
+        <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-yellow-500 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-1">
+                Warnings:
+              </h4>
+              <ul className="text-sm text-yellow-700 dark:text-yellow-400 space-y-1">
+                {formWarnings.map((warning, index) => (
+                  <li key={index}>• {warning}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
@@ -248,6 +302,7 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
               className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
               placeholder="Follow up with client about project"
               disabled={isSubmitting}
+              maxLength={200}
             />
           </div>
         </div>
@@ -265,6 +320,7 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
             className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
             placeholder="Add details about this reminder..."
             disabled={isSubmitting}
+            maxLength={1000}
           />
         </div>
 
@@ -375,7 +431,7 @@ export default function ReminderForm({ onSuccess, onCancel, editingReminder }: R
         <div className="flex flex-col sm:flex-row gap-3 pt-4">
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || formErrors.length > 0}
             className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center font-medium"
           >
             {isSubmitting ? (

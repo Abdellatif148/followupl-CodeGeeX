@@ -3,11 +3,10 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { HelmetProvider } from 'react-helmet-async'
 import { useDarkMode } from './hooks/useDarkMode'
 import ErrorBoundary from './components/ErrorBoundary'
-import SecureProtectedRoute from './components/SecureProtectedRoute'
+import ProtectedRoute from './components/ProtectedRoute'
 import SecurityHeaders from './components/SecurityHeaders'
 import SecurityMonitor from './components/SecurityMonitor'
 import ToastContainer from './components/ToastContainer'
-import { ddosProtection } from './lib/ddosProtection'
 import { secureError } from './lib/security'
 
 // Pages
@@ -80,59 +79,59 @@ export default function App() {
 
               {/* Protected routes */}
               <Route path="/language-selection" element={
-                <SecureProtectedRoute>
+                <ProtectedRoute>
                   <LanguageSelection />
-                </SecureProtectedRoute>
+                </ProtectedRoute>
               } />
               <Route path="/dashboard" element={
-                <SecureProtectedRoute>
+                <ProtectedRoute>
                   <Dashboard />
-                </SecureProtectedRoute>
+                </ProtectedRoute>
               } />
               <Route path="/clients" element={
-                <SecureProtectedRoute>
+                <ProtectedRoute>
                   <Clients />
-                </SecureProtectedRoute>
+                </ProtectedRoute>
               } />
               <Route path="/clients/add" element={
-                <SecureProtectedRoute>
+                <ProtectedRoute>
                   <AddClient />
-                </SecureProtectedRoute>
+                </ProtectedRoute>
               } />
               <Route path="/reminders" element={
-                <SecureProtectedRoute>
+                <ProtectedRoute>
                   <Reminders />
-                </SecureProtectedRoute>
+                </ProtectedRoute>
               } />
               <Route path="/invoices" element={
-                <SecureProtectedRoute>
+                <ProtectedRoute>
                   <Invoices />
-                </SecureProtectedRoute>
+                </ProtectedRoute>
               } />
               <Route path="/expenses" element={
-                <SecureProtectedRoute>
+                <ProtectedRoute>
                   <Expenses />
-                </SecureProtectedRoute>
+                </ProtectedRoute>
               } />
               <Route path="/expenses/add" element={
-                <SecureProtectedRoute>
+                <ProtectedRoute>
                   <AddExpense />
-                </SecureProtectedRoute>
+                </ProtectedRoute>
               } />
               <Route path="/settings" element={
-                <SecureProtectedRoute>
+                <ProtectedRoute>
                   <Settings />
-                </SecureProtectedRoute>
+                </ProtectedRoute>
               } />
               <Route path="/progress-charts" element={
-                <SecureProtectedRoute requiresPro={true}>
+                <ProtectedRoute requiresPro={true}>
                   <ProgressCharts />
-                </SecureProtectedRoute>
+                </ProtectedRoute>
               } />
               <Route path="/upgrade" element={
-                <SecureProtectedRoute>
+                <ProtectedRoute>
                   <Upgrade />
-                </SecureProtectedRoute>
+                </ProtectedRoute>
               } />
             </Routes>
             {/* Security Components */}

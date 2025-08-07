@@ -8,8 +8,10 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import { clientsApi } from '../lib/database'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../hooks/useToast'
+import { useAnalytics } from '../hooks/useAnalytics'
 import { formatDate } from '../utils/dateHelpers'
-import { useBusinessAnalytics } from '../hooks/useAnalytics'
+import { handleApiError } from '../utils/errorHandling'
+import { debounce } from '../utils/performance'
 
 interface Client {
   id: string
@@ -28,7 +30,7 @@ interface Client {
 }
 
 export default function Clients() {
-  const { trackClientAction } = useBusinessAnalytics()
+  const { trackBusinessAction } = useAnalytics()
   const { success, error } = useToast()
   const [clients, setClients] = useState<Client[]>([])
   const [filteredClients, setFilteredClients] = useState<Client[]>([])
@@ -39,13 +41,21 @@ export default function Clients() {
   const [showForm, setShowForm] = useState(false)
   const [editingClient, setEditingClient] = useState<Client | null>(null)
   const [deletingClient, setDeletingClient] = useState<string | null>(null)
+  const [searchLoading, setSearchLoading] = useState(false)
 
   useEffect(() => {
     loadClients()
   }, [])
 
-  useEffect(() => {
+  // Debounced search to improve performance
+  const debouncedSearch = debounce(() => {
+    setSearchLoading(true)
     filterClients()
+    setSearchLoading(false)
+  }, 300)
+  
+  useEffect(() => {
+    debouncedSearch()
   }, [clients, searchTerm, statusFilter, platformFilter])
 
   const loadClients = async () => {
@@ -57,7 +67,8 @@ export default function Clients() {
       }
     } catch (err) {
       console.error('Error loading clients:', err)
-      error('Failed to load clients')
+      const appError = handleApiError(err, 'clients loading')
+      error(appError.message)
     } finally {
       setLoading(false)
     }
@@ -91,11 +102,13 @@ export default function Clients() {
   }
 
   const handleCreateClient = () => {
+    trackBusinessAction('start_create', 'client')
     setEditingClient(null)
     setShowForm(true)
   }
 
   const handleEditClient = (client: Client) => {
+    trackBusinessAction('start_edit', 'client', { client_id: client.id })
     setEditingClient(client)
     setShowForm(true)
   }
@@ -108,6 +121,7 @@ export default function Clients() {
   }
 
   const handleFormCancel = () => {
+    trackBusinessAction('cancel_form', 'client')
     setShowForm(false)
     setEditingClient(null)
   }
@@ -120,15 +134,25 @@ export default function Clients() {
       await clientsApi.delete(clientId)
       
       // Track client deletion
-      trackClientAction('delete', {})
+      trackBusinessAction('delete', 'client', { client_id: clientId })
       
       loadClients()
       success('Client deleted successfully!')
     } catch (err) {
       console.error('Error deleting client:', err)
-      error('Failed to delete client')
+      const appError = handleApiError(err, 'client deletion')
+      error(appError.message)
     } finally {
       setDeletingClient(null)
+    }
+  }
+  
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setSearchTerm(value)
+    
+    if (value.length > 0) {
+      trackBusinessAction('search', 'client', { query_length: value.length })
     }
   }
 
@@ -171,6 +195,7 @@ export default function Clients() {
           <button
             onClick={handleCreateClient}
             className="mt-4 sm:mt-0 bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 transition-colors duration-200 flex items-center font-medium shadow-lg hover:shadow-xl transform hover:scale-105"
+            aria-label="Add new client"
           >
             <Plus className="w-5 h-5 mr-2" />
             Add Client
@@ -209,12 +234,18 @@ export default function Clients() {
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
+              {searchLoading && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                </div>
+              )}
               <input
                 type="text"
                 placeholder="Search clients..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={handleSearchChange}
                 className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
+                maxLength={100}
               />
             </div>
             <div className="flex gap-4">
@@ -224,6 +255,7 @@ export default function Clients() {
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="pl-10 pr-8 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
+                  aria-label="Filter by status"
                 >
                   <option value="all">All Status</option>
                   <option value="active">Active</option>
@@ -236,6 +268,7 @@ export default function Clients() {
                   value={platformFilter}
                   onChange={(e) => setPlatformFilter(e.target.value)}
                   className="px-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
+                  aria-label="Filter by platform"
                 >
                   <option value="all">All Platforms</option>
                   <option value="fiverr">Fiverr</option>
@@ -251,7 +284,7 @@ export default function Clients() {
         {/* Clients List */}
         {loading ? (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-12">
-            <LoadingSpinner text="Loading clients..." />
+            <LoadingSpinner text="Loading clients..." size="lg" />
           </div>
         ) : filteredClients.length === 0 ? (
           <EmptyState
@@ -309,6 +342,7 @@ export default function Clients() {
                     {client.email}
                   </div>
                 )}
+                      onClick={() => trackBusinessAction('contact', 'client', { method: 'email', client_id: client.id })}
 
                 {client.phone && (
                   <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-2">
@@ -316,6 +350,7 @@ export default function Clients() {
                     {client.phone}
                   </div>
                 )}
+                      onClick={() => trackBusinessAction('contact', 'client', { method: 'phone', client_id: client.id })}
 
                 {client.tags && client.tags.length > 0 && (
                   <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-4">
@@ -351,6 +386,7 @@ export default function Clients() {
                       onClick={() => handleEditClient(client)}
                       className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200"
                       title="Edit client"
+                      aria-label={`Edit ${client.name}`}
                     >
                       <Edit className="w-4 h-4" />
                     </button>
@@ -359,6 +395,7 @@ export default function Clients() {
                       disabled={deletingClient === client.id}
                       className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 disabled:opacity-50 transition-colors duration-200"
                       title="Delete client"
+                      aria-label={`Delete ${client.name}`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

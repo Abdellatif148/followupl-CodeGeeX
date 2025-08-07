@@ -9,7 +9,9 @@ import { supabase } from '../lib/supabase'
 import { useCurrency } from '../hooks/useCurrency'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../hooks/useToast'
+import { useAnalytics } from '../hooks/useAnalytics'
 import { formatDate, isOverdue } from '../utils/dateHelpers'
+import { handleApiError } from '../utils/errorHandling'
 
 interface DashboardStats {
   activeClients: number
@@ -30,12 +32,23 @@ export default function Dashboard() {
   const { user, profile } = useAuth()
   const { formatCurrency } = useCurrency()
   const { error } = useToast()
+  const { trackFeatureUsage } = useAnalytics()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
 
   useEffect(() => {
     loadDashboardData()
+    
+    // Set up auto-refresh every 5 minutes
+    const interval = setInterval(loadDashboardData, 5 * 60 * 1000)
+    return () => clearInterval(interval)
   }, [])
+  
+  useEffect(() => {
+    // Track dashboard view
+    trackFeatureUsage('dashboard', 'view')
+  }, [trackFeatureUsage])
 
   const loadDashboardData = async () => {
     try {
@@ -43,13 +56,20 @@ export default function Dashboard() {
       if (user) {
         const dashboardStats = await dashboardApi.getStats(user.id)
         setStats(dashboardStats)
+        setLastRefresh(new Date())
       }
     } catch (err) {
       console.error('Error loading dashboard data:', err)
-      error('Failed to load dashboard data')
+      const appError = handleApiError(err, 'dashboard data loading')
+      error(appError.message)
     } finally {
       setLoading(false)
     }
+  }
+  
+  const handleQuickAction = (action: string, path: string) => {
+    trackFeatureUsage('dashboard', `quick_action_${action}`)
+    // Navigation will be handled by Link component
   }
 
   const getGreeting = () => {
@@ -65,7 +85,7 @@ export default function Dashboard() {
     return (
       <Layout>
         <div className="p-6">
-          <LoadingSpinner text="Loading dashboard..." />
+          <LoadingSpinner text="Loading dashboard..." size="lg" />
         </div>
       </Layout>
     )
@@ -81,6 +101,9 @@ export default function Dashboard() {
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             Here's what's happening with your freelance business today.
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+            Last updated: {lastRefresh.toLocaleTimeString()}
           </p>
         </div>
 
@@ -139,6 +162,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Link
             to="/clients/add"
+            onClick={() => handleQuickAction('add_client', '/clients/add')}
             className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg transition-all duration-200 group"
           >
             <div className="flex items-center">
@@ -154,6 +178,7 @@ export default function Dashboard() {
 
           <Link
             to="/reminders"
+            onClick={() => handleQuickAction('add_reminder', '/reminders')}
             className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg transition-all duration-200 group"
           >
             <div className="flex items-center">
@@ -169,6 +194,7 @@ export default function Dashboard() {
 
           <Link
             to="/invoices"
+            onClick={() => handleQuickAction('create_invoice', '/invoices')}
             className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg transition-all duration-200 group"
           >
             <div className="flex items-center">
@@ -192,6 +218,7 @@ export default function Dashboard() {
               <Link
                 to="/reminders"
                 className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
+                onClick={() => trackFeatureUsage('dashboard', 'view_all_reminders')}
               >
                 View all
               </Link>
@@ -224,6 +251,13 @@ export default function Dashboard() {
               <div className="text-center py-8">
                 <Clock className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
                 <p className="text-gray-500 dark:text-gray-400">No upcoming reminders</p>
+                <Link
+                  to="/reminders"
+                  className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium mt-2 inline-block"
+                  onClick={() => trackFeatureUsage('dashboard', 'create_first_reminder')}
+                >
+                  Create your first reminder
+                </Link>
               </div>
             )}
           </div>
@@ -235,6 +269,7 @@ export default function Dashboard() {
               <Link
                 to="/invoices"
                 className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
+                onClick={() => trackFeatureUsage('dashboard', 'view_all_invoices')}
               >
                 View all
               </Link>
@@ -276,6 +311,7 @@ export default function Dashboard() {
                 <Link
                   to="/invoices"
                   className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium mt-2 inline-block"
+                  onClick={() => trackFeatureUsage('dashboard', 'create_first_invoice')}
                 >
                   Create your first invoice
                 </Link>

@@ -38,36 +38,33 @@ export interface Database {
 // Profile types
 export interface Profile {
   id: string
-  full_name: string
-  email: string
-  plan: 'free' | 'pro' | 'super_pro'
-  currency: string
-  language: string
-  timezone?: string
+  full_name?: string
   avatar_url?: string
+  currency: string
+  timezone?: string
+  language: string
+  plan: 'free' | 'pro' | 'super_pro'
   created_at: string
   updated_at: string
 }
 
 export interface ProfileInsert {
   id: string
-  full_name: string
-  email: string
-  plan?: 'free' | 'pro' | 'super_pro'
-  currency?: string
-  language?: string
-  timezone?: string
+  full_name?: string
   avatar_url?: string
+  currency?: string
+  timezone?: string
+  language?: string
+  plan?: 'free' | 'pro' | 'super_pro'
 }
 
 export interface ProfileUpdate {
   full_name?: string
-  email?: string
-  plan?: 'free' | 'pro' | 'super_pro'
-  currency?: string
-  language?: string
-  timezone?: string
   avatar_url?: string
+  currency?: string
+  timezone?: string
+  language?: string
+  plan?: 'free' | 'pro' | 'super_pro'
 }
 
 // Client types

@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import LazyImage from './LazyImage'
 
 export default function Hero() {
   return (
@@ -34,14 +35,14 @@ export default function Hero() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
           <Link
             to="/signup"
-            className="bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 transition-all duration-200 font-semibold text-lg"
+            className="bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-semibold text-lg"
             aria-label="Sign up for FollowUply free account"
           >
             Get Started Free
           </Link>
           <Link
             to="/login"
-            className="border-2 border-white/30 text-white px-8 py-4 rounded-lg hover:bg-white/10 transition-all duration-200 font-semibold text-lg"
+            className="border-2 border-white/50 text-white px-8 py-4 rounded-lg hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 transition-all duration-200 font-semibold text-lg"
             aria-label="Sign in to your FollowUply account"
           >
             Sign In
@@ -49,7 +50,7 @@ export default function Hero() {
         </div>
 
         {/* Social proof or additional info */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-8 text-gray-400 text-sm">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-8 text-gray-300 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-green-400 rounded-full"></div>
             <span>AI-Powered Reminders</span>
@@ -67,8 +68,8 @@ export default function Hero() {
 
       {/* Scroll indicator */}
       <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
-        <div className="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center">
-          <div className="w-1 h-3 bg-white/60 rounded-full mt-2 animate-bounce"></div>
+        <div className="w-6 h-10 border-2 border-white/50 rounded-full flex justify-center">
+          <div className="w-1 h-3 bg-white/80 rounded-full mt-2 animate-bounce"></div>
         </div>
       </div>
     </section>

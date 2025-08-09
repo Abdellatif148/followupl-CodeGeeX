@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Menu, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import DarkModeToggle from './DarkModeToggle'
+import LazyImage from './LazyImage'
 
 export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -37,10 +38,13 @@ export default function Navigation() {
             aria-label={isMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
             aria-expanded={isMenuOpen}
           >
-            <img 
+            <LazyImage 
               src="/followuplyImage-removebg-preview.png" 
               alt="FollowUply Logo" 
               className="w-12 h-12"
+              width={48}
+              height={48}
+              lazy={false}
             />
             <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               FollowUply
@@ -76,7 +80,7 @@ export default function Navigation() {
             <DarkModeToggle />
             <Link
               to="/login"
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200"
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
             >
               Sign In
             </Link>
@@ -124,7 +128,7 @@ export default function Navigation() {
               </Link>
               <Link
                 to="/login"
-                className="w-full mt-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 block text-center"
+                className="w-full mt-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200 block text-center"
               >
                 Sign In
               </Link>

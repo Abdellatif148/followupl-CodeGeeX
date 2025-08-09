@@ -1,5 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
+import LazyImage from './LazyImage'
 
 export default function Footer() {
   return (
@@ -8,10 +9,12 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
-              <img 
+              <LazyImage 
                 src="/followuplyImage-removebg-preview.png" 
                 alt="FollowUply Logo" 
                 className="w-12 h-12"
+                width={48}
+                height={48}
               />
               <span className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                 FollowUply

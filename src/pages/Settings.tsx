@@ -114,10 +114,11 @@ export default function Settings() {
       // Track account deletion attempt
       trackFeatureUsage('settings', 'account_delete')
       
-      // Call the delete_user function
-      const { error: deleteError } = await supabase.rpc('delete_user')
+      // Call the delete_user function with proper error handling
+      const { error: deleteError } = await supabase.rpc('delete_user', {})
       
       if (deleteError) {
+        console.error('Delete user error:', deleteError)
         throw deleteError
       }
 
@@ -130,7 +131,7 @@ export default function Settings() {
       window.location.href = '/'
     } catch (err) {
       console.error('Error deleting account:', err)
-      error('Failed to delete account. Please try again.')
+      error('Failed to delete account. Please contact support if this issue persists.')
     } finally {
       setIsLoading(false)
       setShowDeleteConfirm(false)

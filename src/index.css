@@ -1,6 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Base font family */
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+}
+
+/* High contrast color improvements */
+@layer base {
+  :root {
+    --text-primary: #111827;
+    --text-secondary: #374151;
+    --text-tertiary: #6b7280;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f9fafb;
+    --border-primary: #e5e7eb;
+    --accent-primary: #2563eb;
+    --accent-secondary: #3b82f6;
+  }
+
+  .dark {
+    --text-primary: #f9fafb;
+    --text-secondary: #e5e7eb;
+    --text-tertiary: #d1d5db;
+    --bg-primary: #111827;
+    --bg-secondary: #1f2937;
+    --border-primary: #374151;
+    --accent-primary: #60a5fa;
+    --accent-secondary: #3b82f6;
+  }
+}
+
+/* Improved contrast for text elements */
+.text-gray-600 {
+  color: #4b5563 !important;
+}
+
+.dark .text-gray-600 {
+  color: #d1d5db !important;
+}
+
+.text-gray-500 {
+  color: #374151 !important;
+}
+
+.dark .text-gray-500 {
+  color: #e5e7eb !important;
+}
+
+.text-gray-400 {
+  color: #6b7280 !important;
+}
+
+.dark .text-gray-400 {
+  color: #d1d5db !important;
+}
+
+/* Button contrast improvements */
+.bg-blue-600 {
+  background-color: #1d4ed8 !important;
+}
+
+.hover\:bg-blue-700:hover {
+  background-color: #1e40af !important;
+}
+
+/* Border contrast improvements */
+.border-gray-300 {
+  border-color: #d1d5db !important;
+}
+
+.dark .border-gray-300 {
+  border-color: #4b5563 !important;
+}
 
 /* RTL Support */
 [dir="rtl"] {
@@ -45,10 +121,67 @@
 
 /* Ensure proper font rendering for Arabic */
 [dir="rtl"] {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 /* Smooth transitions for direction changes */
 * {
   transition: margin 0.2s ease, padding 0.2s ease;
+}
+
+/* Performance optimizations */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Accessibility improvements */
+.focus\:ring-2:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--accent-primary);
+}
+
+/* Loading states */
+.loading-skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+.dark .loading-skeleton {
+  background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+  background-size: 200% 100%;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Image optimization */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Reduce layout shift */
+.aspect-ratio-16-9 {
+  aspect-ratio: 16 / 9;
+}
+
+.aspect-ratio-1-1 {
+  aspect-ratio: 1 / 1;
 }

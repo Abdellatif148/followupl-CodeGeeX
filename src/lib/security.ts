@@ -228,10 +228,16 @@ export const authSecurity = {
    */
   async hasPermission(userId: string, resourceId: string, resourceType: 'client' | 'invoice' | 'reminder' | 'expense'): Promise<boolean> {
     try {
+      if (!validate.uuid(userId) || !validate.uuid(resourceId)) {
+        return false
+      }
+      
+      const tableName = resourceType === 'client' ? 'clients' : 
+                       resourceType === 'invoice' ? 'invoices' :
+                       resourceType === 'reminder' ? 'reminders' : 'expenses'
+      
       const { data, error } = await supabase
-        .from(resourceType === 'client' ? 'clients' : 
-              resourceType === 'invoice' ? 'invoices' :
-              resourceType === 'reminder' ? 'reminders' : 'expenses')
+        .from(tableName)
         .select('user_id')
         .eq('id', resourceId)
         .single()

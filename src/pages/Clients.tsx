@@ -339,18 +339,28 @@ export default function Clients() {
                 {client.email && (
                   <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-2">
                     <Mail className="w-4 h-4 mr-2" />
-                    {client.email}
+                    <a 
+                      href={`mailto:${client.email}`}
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200"
+                      onClick={() => trackBusinessAction('contact', 'client', { method: 'email', client_id: client.id })}
+                    >
+                      {client.email}
+                    </a>
                   </div>
                 )}
-                      onClick={() => trackBusinessAction('contact', 'client', { method: 'email', client_id: client.id })}
 
                 {client.phone && (
                   <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-2">
                     <Phone className="w-4 h-4 mr-2" />
-                    {client.phone}
+                    <a 
+                      href={`tel:${client.phone}`}
+                      className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200"
+                      onClick={() => trackBusinessAction('contact', 'client', { method: 'phone', client_id: client.id })}
+                    >
+                      {client.phone}
+                    </a>
                   </div>
                 )}
-                      onClick={() => trackBusinessAction('contact', 'client', { method: 'phone', client_id: client.id })}
 
                 {client.tags && client.tags.length > 0 && (
                   <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-4">

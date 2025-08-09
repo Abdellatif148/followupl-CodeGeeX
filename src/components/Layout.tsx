@@ -20,6 +20,7 @@ import { useAnalytics } from '../hooks/useAnalytics'
 import DarkModeToggle from './DarkModeToggle'
 import LanguageSwitcher from './LanguageSwitcher'
 import NotificationCenter from './NotificationCenter'
+import LazyImage from './LazyImage'
 import { notificationsApi } from '../lib/database'
 import { supabase } from '../lib/supabase'
 
@@ -104,10 +105,13 @@ export default function Layout({ children }: LayoutProps) {
           {/* Logo */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
             <Link to="/dashboard" className="flex items-center space-x-2">
-              <img 
+              <LazyImage 
                 src="/followuplyImage-removebg-preview.png" 
                 alt="FollowUply Logo" 
                 className="w-10 h-10"
+                width={40}
+                height={40}
+                lazy={false}
               />
               <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 FollowUply

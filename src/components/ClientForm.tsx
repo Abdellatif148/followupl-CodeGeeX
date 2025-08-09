@@ -345,7 +345,8 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
             </div>
           </div>
         </div>
-        
+
+
         <div>
           <label htmlFor="company" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Company Name
@@ -364,25 +365,6 @@ export default function ClientForm({ onSuccess, onCancel, editingClient }: Clien
               maxLength={100}
               autoComplete="organization"
             />
-          </div>
-
-          <div>
-            <label htmlFor="company" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Company Name
-            </label>
-            <div className="relative">
-              <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 w-5 h-5" />
-              <input
-                type="text"
-                id="company"
-                name="company"
-                value={formData.company}
-                onChange={handleInputChange}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
-                placeholder="Company Inc."
-                disabled={isSubmitting}
-              />
-            </div>
           </div>
         </div>
 

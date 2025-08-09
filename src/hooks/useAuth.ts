@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { profilesApi } from '../lib/database'
-import { secureError, sessionSecurity } from '../lib/security'
+import { secureError, sessionSecurity, validate } from '../lib/security'
 import type { Profile } from '../types/database'
 
 interface AuthState {
@@ -122,6 +122,7 @@ export function useAuth() {
           event, 
           userId: session?.user?.id 
         })
+        
         if (event === 'SIGNED_IN' && session?.user) {
           try {
             // Validate new session
@@ -139,10 +140,9 @@ export function useAuth() {
               profile = await profilesApi.create({
                 id: session.user.id,
                 full_name: session.user.user_metadata?.full_name || '',
-                email: session.user.email || '',
-                plan: 'free',
                 currency: 'USD',
-                language: 'en'
+                language: 'en',
+                plan: 'free'
               })
             }
 

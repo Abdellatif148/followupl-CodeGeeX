@@ -19,13 +19,14 @@ export default function LoadingSpinner({
   }
 
   return (
-    <div className={`flex items-center justify-center ${className}`}>
+    <div className={`flex items-center justify-center ${className}`} role="status" aria-live="polite">
       <div className="text-center">
         <Loader2 className={`${sizeClasses[size]} animate-spin text-blue-600 dark:text-blue-400 mx-auto mb-2`} />
         {text && (
-          <p className="text-sm text-gray-600 dark:text-gray-400">{text}</p>
+          <p className="text-sm text-gray-700 dark:text-gray-300">{text}</p>
         )}
       </div>
+      <span className="sr-only">{text}</span>
     </div>
   )
 }

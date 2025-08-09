@@ -270,34 +270,6 @@ export const remindersApi = {
     })
   },
 
-  async requestBrowserNotificationPermission(): Promise<void> {
-    if (!('Notification' in window)) {
-      console.log('This browser does not support desktop notification')
-      return
-    }
-
-    if (Notification.permission === 'granted') return
-
-    try {
-      await Notification.requestPermission()
-    } catch (error) {
-      console.error('Error requesting notification permission:', error)
-    }
-  },
-
-  async showBrowserNotification(reminder: Reminder): Promise<void> {
-    if (Notification.permission !== 'granted') return
-
-    new Notification('FollowUply', {
-      body: `⏰ ${reminder.title} is due soon!`,
-      icon: '/followuplyImage-removebg-preview.png',
-      data: {
-        reminderId: reminder.id,
-        type: 'reminder'
-      }
-    })
-  },
-
   async getAll(userId: string): Promise<ReminderWithClient[]> {
     try {
       if (!userId || !validate.uuid(userId)) {

@@ -37,7 +37,7 @@ export default function Promise() {
           {promiseCards.map((card, index) => (
             <div 
               key={index}
-              className="bg-white dark:bg-gray-700 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 group hover:-translate-y-2"
+              className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 group hover:-translate-y-2 border border-gray-200 dark:border-gray-700"
             >
               <div className="mb-6">
                 <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
@@ -49,7 +49,7 @@ export default function Promise() {
                 {card.title}
               </h3>
               
-              <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
                 {card.description}
               </p>
             </div>

@@ -85,18 +85,41 @@ class AnalyticsService {
         return
       }
 
-      // Check if gtag is available
-      if (typeof window !== 'undefined' && window.gtag) {
-        this.isInitialized = true
-        console.log('📊 Google Analytics initialized successfully')
-        
-        // Set default configuration
-        this.configureAnalytics()
+      // Check if gtag is available (wait for it to load)
+      if (typeof window !== 'undefined') {
+        // Wait for gtag to be available
+        const checkGtag = () => {
+          if (window.gtag) {
+            this.isInitialized = true
+            console.log('📊 Google Analytics initialized successfully')
+            this.configureAnalytics()
+          } else {
+            setTimeout(checkGtag, 100)
+          }
+        }
+        checkGtag()
       } else {
-        console.warn('📊 Google Analytics not loaded')
+        console.warn('📊 Google Analytics not available (server-side)')
       }
     } catch (error) {
       console.error('📊 Analytics initialization failed:', error)
+      this.isEnabled = false
+    }
+  }
+
+  /**
+   * Lazy initialize analytics when first needed
+   */
+  private lazyInitialize(): void {
+    if (this.isInitialized || !this.isEnabled) return
+    
+    try {
+      if (typeof window !== 'undefined' && window.gtag) {
+        this.isInitialized = true
+        this.configureAnalytics()
+      }
+    } catch (error) {
+      console.error('📊 Analytics lazy initialization failed:', error)
       this.isEnabled = false
     }
   }
@@ -143,6 +166,9 @@ class AnalyticsService {
   public trackPageView(data: PageViewData = {}): void {
     if (!this.isReady()) return
 
+    this.lazyInitialize()
+    if (!this.isReady()) return
+
     try {
       const pageData = {
         page_title: data.page_title || document.title,
@@ -169,6 +195,9 @@ class AnalyticsService {
   public trackEvent(event: AnalyticsEvent): void {
     if (!this.isReady()) return
 
+    this.lazyInitialize()
+    if (!this.isReady()) return
+
     try {
       const eventData = {
         event_category: event.category,
@@ -192,6 +221,9 @@ class AnalyticsService {
    * Call this when user logs in or updates profile
    */
   public setUserProperties(properties: UserProperties): void {
+    if (!this.isReady()) return
+
+    this.lazyInitialize()
     if (!this.isReady()) return
 
     try {

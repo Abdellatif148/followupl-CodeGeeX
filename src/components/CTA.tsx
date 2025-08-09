@@ -25,19 +25,19 @@ export default function CTA() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
           <Link
             to="/signup"
-            className="bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 transition-all duration-200 font-semibold text-lg"
+            className="bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 font-semibold text-lg"
           >
             Start Free Today
           </Link>
           <Link
             to="/login"
-            className="border-2 border-white/30 text-white px-8 py-4 rounded-lg hover:bg-white/10 transition-all duration-200 font-semibold text-lg"
+            className="border-2 border-white/50 text-white px-8 py-4 rounded-lg hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 transition-all duration-200 font-semibold text-lg"
           >
             Sign In
           </Link>
         </div>
 
-        <p className="text-gray-400 text-sm">
+        <p className="text-gray-300 text-sm">
           No credit card required • Free forever plan available
         </p>
       </div>

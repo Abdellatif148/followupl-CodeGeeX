@@ -251,7 +251,7 @@ export const bundleOptimization = {
     try {
       switch (chunkName) {
         case 'charts':
-          return await import('../components/ProgressCharts')
+          return await import('../pages/ProgressCharts')
         case 'settings':
           return await import('../pages/Settings')
         default:
